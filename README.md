@@ -24,6 +24,7 @@ Since upstream commit [`1daed86`](https://github.com/dave1010/Asdfghjkl/commit/1
 - Custom grid-row definitions for both 4x10 and 4x5 layouts.
 - Multi-display handling that keeps 5-column layouts intact on the screen under the mouse cursor instead of splitting them across displays.
 - App-bundle packaging scripts and install targets for building `arstdhneio.app`.
+- Automatic `.icns` app icon generation from `icon/icon.png` during app-bundle and release builds.
 - A menu-bar Launch at Login toggle backed by macOS `SMAppService` when the bundled app is installed and launched as `arstdhneio.app`.
 - A menu-bar Configuration window backed by `UserDefaults`, so layout presets and custom rows can be managed in-app instead of only through launch flags.
 - A local release-packaging flow that matches CI and produces `arstdhneio-macos-app.zip`.
