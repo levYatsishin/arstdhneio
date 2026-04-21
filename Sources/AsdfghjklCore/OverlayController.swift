@@ -1,5 +1,12 @@
 import Foundation
 
+private let overlayControllerDebugLoggingEnabled = ProcessInfo.processInfo.environment["ARSTDHNEIO_DEBUG"] == "1"
+
+private func overlayControllerDebugLog(_ message: String) {
+    guard overlayControllerDebugLoggingEnabled else { return }
+    fputs("[OverlayControllerDebug] \(message)\n", stderr)
+}
+
 public final class OverlayController {
     private var state: OverlayState
     private let gridLayout: GridLayout
@@ -139,6 +146,7 @@ public final class OverlayController {
     public func click() {
         guard state.isActive else { return }
         let target = state.targetPoint
+        overlayControllerDebugLog("click target=\(target)")
         mouseActionPerformer.click(at: target)
         deactivate()
     }
@@ -146,6 +154,7 @@ public final class OverlayController {
     public func middleClick() {
         guard state.isActive else { return }
         let target = state.targetPoint
+        overlayControllerDebugLog("middleClick target=\(target)")
         mouseActionPerformer.middleClick(at: target)
         deactivate()
     }
@@ -153,6 +162,7 @@ public final class OverlayController {
     public func rightClick() {
         guard state.isActive else { return }
         let target = state.targetPoint
+        overlayControllerDebugLog("rightClick target=\(target)")
         mouseActionPerformer.rightClick(at: target)
         deactivate()
     }

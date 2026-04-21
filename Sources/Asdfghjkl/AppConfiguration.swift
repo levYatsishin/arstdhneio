@@ -62,7 +62,7 @@ enum ActivationMode: String, CaseIterable, Sendable {
     var descriptionText: String {
         switch self {
         case .commandSemicolon:
-            return "Uses a registered global shortcut and local overlay keyboard handling. This is the lower-permission mode."
+            return "Uses a registered global shortcut for activation while overlay keys still flow through the global listener. This mode still requires Input Monitoring and Accessibility."
         case .doubleCommandTap:
             return "Uses a global event tap to detect a double tap of Command. This mode requires Input Monitoring in addition to Accessibility."
         }

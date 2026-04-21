@@ -4,6 +4,13 @@ import AppKit
 import Carbon
 import arstdhneioCore
 
+private let appDebugLoggingEnabled = ProcessInfo.processInfo.environment["ARSTDHNEIO_DEBUG"] == "1"
+
+private func appDebugLog(_ message: String) {
+    guard appDebugLoggingEnabled else { return }
+    fputs("[App] \(message)\n", stderr)
+}
+
 struct AboutView: View {
     var body: some View {
         ScrollView {
@@ -92,12 +99,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var launchAtLoginMenuItem: NSMenuItem?
     private var aboutWindow: NSWindow?
     private var configurationWindow: NSWindow?
-    private var previouslyActiveApplication: NSRunningApplication?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         currentSettings = appConfiguration.effectiveSettings
         currentGridLayout = appConfiguration.gridLayout
         currentActivationMode = appConfiguration.effectiveSettings.activationMode
+        appDebugLog("launch activationMode=\(currentActivationMode.rawValue) layoutColumns=\(currentGridLayout.columns)")
         setupMenuBar()
 
         screenObserver = NotificationCenter.default.addObserver(
@@ -282,20 +289,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     
     private func updateWindowVisibility(for state: OverlayState) {
+        appDebugLog("updateWindowVisibility active=\(state.isActive)")
         if state.isActive {
-            if currentActivationMode == .commandSemicolon {
-                NSApp.activate(ignoringOtherApps: true)
-            }
             overlayWindows.forEach { $0.show() }
             if currentActivationMode == .commandSemicolon {
+                appDebugLog("requesting overlay keyboard focus")
                 overlayWindows.first?.focusForKeyboardInput()
             }
         } else {
             overlayWindows.forEach { $0.hide() }
-            if currentActivationMode == .commandSemicolon {
-                previouslyActiveApplication?.activate(options: [])
-                previouslyActiveApplication = nil
-            }
         }
     }
 
@@ -348,6 +350,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func configureRuntime(layout gridLayout: arstdhneioCore.GridLayout, activationMode: ActivationMode) {
         currentGridLayout = gridLayout
         currentActivationMode = activationMode
+        appDebugLog("configureRuntime activationMode=\(activationMode.rawValue)")
         hotKeyManager?.stop()
         inputManager?.stop()
         overlayWindows.forEach { $0.hide() }
@@ -372,14 +375,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         inputManager = InputManager(overlayController: overlayController)
         if activationMode == .doubleCommandTap {
+            appDebugLog("starting global input manager for double-command mode")
             inputManager.onToggle = { [weak self] in
                 Task { @MainActor in
                     self?.rebuildOverlayWindows()
                 }
             }
+            inputManager.setDoubleCommandActivationEnabled(true)
             inputManager.start()
         } else {
+            appDebugLog("starting cmd+; hotkey mode")
             inputManager.onToggle = nil
+            inputManager.setDoubleCommandActivationEnabled(false)
             let hotKeyManager = GlobalHotKeyManager { [weak self] in
                 Task { @MainActor in
                     self?.handleCommandSemicolonActivation()
@@ -412,9 +419,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func handleCommandSemicolonActivation() {
-        if !overlayController.isActive {
-            previouslyActiveApplication = NSWorkspace.shared.frontmostApplication
-        }
+        appDebugLog("cmd+; activation received overlayActive=\(overlayController.isActive)")
+        rebuildOverlayWindows()
         overlayController.toggle()
     }
 
@@ -425,7 +431,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func handleOverlayKeyEvent(_ event: NSEvent) -> Bool {
         let flags = CGEventFlags(rawValue: UInt64(event.modifierFlags.rawValue))
-        return inputManager.handleKeyCodeDown(Int64(event.keyCode), flags: flags)
+        let consumed = inputManager.handleKeyCodeDown(Int64(event.keyCode), flags: flags)
+        appDebugLog(
+            "overlay keyDown keyCode=\(event.keyCode) chars=\(event.charactersIgnoringModifiers ?? "nil") " +
+            "mods=\(event.modifierFlags.rawValue) consumed=\(consumed) overlayActive=\(overlayController.isActive)"
+        )
+        return consumed
     }
 }
 #else

@@ -5,9 +5,17 @@ import ApplicationServices
 import CoreGraphics
 #endif
 
+private let inputManagerDebugLoggingEnabled = ProcessInfo.processInfo.environment["ARSTDHNEIO_DEBUG"] == "1"
+
+private func inputManagerDebugLog(_ message: String) {
+    guard inputManagerDebugLoggingEnabled else { return }
+    fputs("[InputManager] \(message)\n", stderr)
+}
+
 public final class InputManager {
     private let overlayController: OverlayController
     private var commandRecognizer = CommandTapRecognizer()
+    private var doubleCommandActivationEnabled = true
     #if os(macOS)
     private struct PermissionStatus {
         let hasInputMonitoring: Bool
@@ -118,14 +126,23 @@ public final class InputManager {
     }
 
     public func handleCommandDown() {
+        guard doubleCommandActivationEnabled else { return }
+        inputManagerDebugLog("handleCommandDown")
         commandRecognizer.handleCommandDown()
     }
 
     public func handleCommandUp() {
+        guard doubleCommandActivationEnabled else { return }
+        inputManagerDebugLog("handleCommandUp")
         commandRecognizer.handleCommandUp { [weak self] in
             self?.onToggle?()
             self?.overlayController.toggle()
         }
+    }
+
+    public func setDoubleCommandActivationEnabled(_ enabled: Bool) {
+        doubleCommandActivationEnabled = enabled
+        inputManagerDebugLog("doubleCommandActivationEnabled=\(enabled)")
     }
 
     public func markCommandAsModifier() {
@@ -138,14 +155,17 @@ public final class InputManager {
     }
 
     public func handleSpacebarClick() {
+        inputManagerDebugLog("handleSpacebarClick overlayActive=\(overlayController.isActive)")
         overlayController.click()
     }
 
     public func handleMiddleClick() {
+        inputManagerDebugLog("handleMiddleClick overlayActive=\(overlayController.isActive)")
         overlayController.middleClick()
     }
 
     public func handleRightClick() {
+        inputManagerDebugLog("handleRightClick overlayActive=\(overlayController.isActive)")
         overlayController.rightClick()
     }
 
@@ -163,6 +183,8 @@ public final class InputManager {
         if commandActive {
             markCommandAsModifier()
         }
+
+        inputManagerDebugLog("handleKeyDown key=\(key) commandActive=\(commandActive) overlayActive=\(overlayController.isActive)")
 
         guard overlayController.isActive else { return false }
 
@@ -230,12 +252,16 @@ public final class InputManager {
 
     @discardableResult
     public func handleKeyCodeDown(_ keyCode: Int64, flags: CGEventFlags = []) -> Bool {
+        inputManagerDebugLog("handleKeyCodeDown keyCode=\(keyCode) flags=\(flags.rawValue)")
         switch keyDownResolution(for: keyCode, flags: flags) {
         case .character(let character):
+            inputManagerDebugLog("resolvedCharacter=\(character)")
             return handleKeyDown(character, commandActive: flags.contains(.maskCommand))
         case .consumed:
+            inputManagerDebugLog("resolvedConsumed")
             return true
         case .ignored:
+            inputManagerDebugLog("resolvedIgnored")
             if flags.contains(.maskCommand) {
                 markCommandAsModifier()
             }

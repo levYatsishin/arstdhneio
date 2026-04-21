@@ -18,7 +18,7 @@ All core credit for the original project, design, and implementation goes to
 Since upstream commit [`1daed86`](https://github.com/dave1010/Asdfghjkl/commit/1daed86b932b82c210e53ba8893de6a8618d366b), this fork adds:
 
 - Command-layer key translation, so printable bindings follow the current macOS layout's Command-equivalent mapping instead of the plain typed layer.
-- Lower-permission `Cmd+;` activation as the default path, using the active layout's command-layer mapping for `;`, with optional Double-Command activation retained as a configurable advanced mode.
+- `Cmd+;` activation as the default path, using the active layout's command-layer mapping for `;`, with optional Double-Command activation retained as a configurable alternative.
 - Configurable grid layouts via launch arguments or environment variables.
 - Built-in `colemak` and `colemak5` presets.
 - Custom grid-row definitions for both 4x10 and 4x5 layouts.
@@ -81,6 +81,22 @@ Mice are slow and a long way away from the keyboard.
 6. If you enable the optional `Double-Command Tap` activation mode, also grant Input Monitoring.
 7. If you want it to start automatically after login, open the menu bar item and enable `Launch at Login`.
 
+### Updating the installed app
+
+The current bundle is ad-hoc signed for local use. That means replacing `~/Applications/arstdhneio.app`
+with a newly built copy can make macOS treat it like a changed app identity for TCC permissions.
+In practice, after reinstalling the app you may need to remove and re-add that exact app bundle under
+**System Settings > Privacy & Security > Accessibility**, and under **Input Monitoring** if you use
+`Double-Command Tap`.
+
+For faster development, prefer running the built executable directly when you are debugging behavior:
+
+```sh
+./dist/arstdhneio.app/Contents/MacOS/arstdhneio
+```
+
+Use `make install-app` only when you specifically want to test the packaged app bundle behavior.
+
 ## How does it work?
 
 Read [ARCHITECTURE.md](ARCHITECTURE.md) for a deeper look at the current components and runtime flow.
@@ -96,15 +112,15 @@ testing aligned with the display that owns the tapped keys.
 
 ### Permissions
 
-By default, `arstdhneio` activates via a registered `Cmd+;` hotkey and captures overlay key presses
-only while its overlay window is focused. In that mode it does not need Input Monitoring, but it
-still needs Accessibility permission to move and click the pointer.
+By default, `arstdhneio` activates via a registered `Cmd+;` hotkey. After activation, overlay keys
+still flow through the global keyboard listener so click and refinement handling stay reliable.
+That means the current `Cmd+;` path still needs both Input Monitoring and Accessibility.
 
 The activation key follows the current layout's command-layer mapping for `;`, not just the US
 physical semicolon key position. If you switch keyboard layouts, the app re-registers that hotkey.
 
-If you switch the activation mode to Double-Command Tap, the app installs a global CGEvent tap and
-that mode requires both Input Monitoring and Accessibility.
+If you switch the activation mode to Double-Command Tap, activation itself also comes from that same
+global event tap instead of the hotkey registration.
 
 The Launch at Login toggle is only available from the bundled `arstdhneio.app`. If you run the
 raw executable with `swift run` or from `.build/debug`, the menu item stays disabled because
@@ -121,8 +137,8 @@ shortcuts and custom layouts that provide a dedicated Command layer.
 
 On first launch, macOS may ask for Accessibility permission. If you later switch to
 Double-Command activation, the app will also need **System Settings > Privacy & Security > Input
-Monitoring**. Because this repo currently builds an unsigned local app bundle, macOS may ask you
-to re-grant those permissions after reinstalling or rebuilding the app.
+Monitoring**. Because this repo currently builds an ad-hoc-signed local app bundle, macOS may ask
+you to re-grant those permissions after reinstalling or rebuilding the app.
 
 ## Development
 

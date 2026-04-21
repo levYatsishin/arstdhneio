@@ -29,6 +29,19 @@ final class InputManagerTests: XCTestCase {
         XCTAssertFalse(controller.isActive)
     }
 
+    func testDisablingDoubleCommandActivationSuppressesToggle() {
+        let controller = OverlayController()
+        let manager = InputManager(overlayController: controller)
+        manager.setDoubleCommandActivationEnabled(false)
+
+        manager.handleCommandDown()
+        manager.handleCommandUp()
+        manager.handleCommandDown()
+        manager.handleCommandUp()
+
+        XCTAssertFalse(controller.isActive)
+    }
+
     func testOverlayHandlesGridRefinementWhenActive() {
         let controller = OverlayController(screenBoundsProvider: { [GridRect(x: 0, y: 0, width: 100, height: 100)] })
         let manager = InputManager(overlayController: controller)

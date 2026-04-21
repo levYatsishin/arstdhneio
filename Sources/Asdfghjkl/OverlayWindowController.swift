@@ -4,6 +4,13 @@ import SwiftUI
 import AppKit
 import arstdhneioCore
 
+private let overlayWindowDebugLoggingEnabled = ProcessInfo.processInfo.environment["ARSTDHNEIO_DEBUG"] == "1"
+
+private func overlayWindowDebugLog(_ message: String) {
+    guard overlayWindowDebugLoggingEnabled else { return }
+    fputs("[OverlayWindow] \(message)\n", stderr)
+}
+
 @MainActor
 final class OverlayWindowController {
     private let screen: NSScreen
@@ -11,7 +18,7 @@ final class OverlayWindowController {
     private let gridSlice: GridSlice
     private let handlesKeyboardInput: Bool
     private let keyDownHandler: ((NSEvent) -> Bool)?
-    private var window: NSWindow?
+    private var window: NSPanel?
     
     var windowID: CGWindowID? {
         guard let window else { return nil }
@@ -37,6 +44,7 @@ final class OverlayWindowController {
         if window == nil {
             window = makeWindow()
         }
+        overlayWindowDebugLog("show handlesKeyboardInput=\(handlesKeyboardInput)")
         window?.setFrame(screen.frame, display: true)
         if handlesKeyboardInput {
             window?.makeKeyAndOrderFront(nil)
@@ -54,21 +62,30 @@ final class OverlayWindowController {
         if window == nil {
             window = makeWindow()
         }
+        overlayWindowDebugLog("focusForKeyboardInput")
         window?.makeKeyAndOrderFront(nil)
     }
 
-    private func makeWindow() -> NSWindow {
+    private func makeWindow() -> NSPanel {
         let overlayView = OverlayGridView(
             model: model,
             screen: screen,
             gridSlice: gridSlice
         )
         let hosting = NSHostingController(rootView: overlayView)
-        let window = OverlayInputWindow(contentViewController: hosting)
+        let window = OverlayInputPanel(
+            contentRect: screen.frame,
+            styleMask: handlesKeyboardInput ? [.borderless, .nonactivatingPanel] : [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentViewController = hosting
         window.keyDownHandler = keyDownHandler
         window.canBecomeKeyOverride = handlesKeyboardInput
+        window.becomesKeyOnlyIfNeeded = false
+        window.hidesOnDeactivate = false
+        window.isFloatingPanel = true
         window.setFrame(screen.frame, display: true)
-        window.styleMask = [.borderless]
         window.level = .screenSaver
         window.isOpaque = false
         window.backgroundColor = .clear
@@ -79,7 +96,7 @@ final class OverlayWindowController {
     }
 }
 
-private final class OverlayInputWindow: NSWindow {
+private final class OverlayInputPanel: NSPanel {
     var keyDownHandler: ((NSEvent) -> Bool)?
     var canBecomeKeyOverride = false
 
@@ -92,6 +109,12 @@ private final class OverlayInputWindow: NSWindow {
     }
 
     override func sendEvent(_ event: NSEvent) {
+        if event.type == .keyDown {
+            overlayWindowDebugLog(
+                "sendEvent keyCode=\(event.keyCode) chars=\(event.charactersIgnoringModifiers ?? "nil") " +
+                "mods=\(event.modifierFlags.rawValue)"
+            )
+        }
         if event.type == .keyDown, keyDownHandler?(event) == true {
             return
         }

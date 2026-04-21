@@ -31,6 +31,10 @@ That produces:
    SWIFT="$HOME/.swiftly/bin/swift" make install-app
    open ~/Applications/arstdhneio.app
    ```
+   Important: `make install-app` replaces the app bundle. Because the bundle is only ad-hoc signed,
+   reinstalling it can invalidate existing Accessibility or Input Monitoring grants for that app path.
+   For a real release check, do one clean install, grant permissions to that exact bundle, and test
+   without reinstalling again in the middle of the check.
 4. Verify both activation modes:
    - default `Cmd+;` mode
    - optional `Double-Command Tap` mode
@@ -63,3 +67,20 @@ git push origin v0.1.0
 The current local app bundle is ad-hoc signed for development and personal distribution. Rebuilding
 or reinstalling it may cause macOS to ask for Accessibility or Input Monitoring permissions again.
 For more stable TCC behavior in public distribution, the next step is proper Apple code signing.
+
+## Publish readiness
+
+What is already in place:
+
+- renamed app/bundle/package identity for `arstdhneio`
+- release workflow and local release archive flow
+- `.app` bundle packaging
+- README, architecture notes, and publishing notes
+- menu bar app flow, configuration UI, and launch-at-login toggle
+
+What is still incomplete for a polished first public release:
+
+- the app is not signed with a stable Apple developer identity yet
+- TCC permission grants can be invalidated after reinstall/update
+- full `swift test` verification is still blocked in the current local environment because `XCTest` is not resolving here
+- the current `Cmd+;` click path still needs real-world validation on your installed app flow
