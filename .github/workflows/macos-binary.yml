@@ -24,7 +24,8 @@ jobs:
 
       - name: Zip app bundle
         run: |
-          ditto -c -k --sequesterRsrc --keepParent dist/arstdhneio.app arstdhneio-macos-app.zip
+          ./scripts/package-release.sh
+          cp dist/arstdhneio-macos-app.zip arstdhneio-macos-app.zip
 
       - name: Upload app bundle
         uses: actions/upload-artifact@v4

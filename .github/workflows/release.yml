@@ -26,7 +26,8 @@ jobs:
 
       - name: Package app bundle
         run: |
-          ditto -c -k --sequesterRsrc --keepParent dist/arstdhneio.app arstdhneio-macos-app.zip
+          ./scripts/package-release.sh
+          cp dist/arstdhneio-macos-app.zip arstdhneio-macos-app.zip
 
       - name: Create release
         uses: softprops/action-gh-release@v1

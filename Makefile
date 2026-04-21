@@ -1,4 +1,4 @@
-.PHONY: build build-prod test run run-prod app install-app open-app clean
+.PHONY: build build-prod test run run-prod app install-app open-app release-archive publish-check clean
 
 SWIFT ?= swift
 
@@ -26,6 +26,13 @@ install-app: app
 
 open-app: app
 	open dist/arstdhneio.app
+
+release-archive: app
+	./scripts/package-release.sh
+
+publish-check:
+	$(SWIFT) build
+	./scripts/build-app.sh
 
 clean:
 	$(SWIFT) package clean

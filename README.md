@@ -26,6 +26,7 @@ Since upstream commit [`1daed86`](https://github.com/dave1010/Asdfghjkl/commit/1
 - App-bundle packaging scripts and install targets for building `arstdhneio.app`.
 - A menu-bar Launch at Login toggle backed by macOS `SMAppService` when the bundled app is installed and launched as `arstdhneio.app`.
 - A menu-bar Configuration window backed by `UserDefaults`, so layout presets and custom rows can be managed in-app instead of only through launch flags.
+- A local release-packaging flow that matches CI and produces `arstdhneio-macos-app.zip`.
 - Additional tests covering command-layer translation, configurable layouts, partitioning rules, and overlay navigation behavior.
 
 ![banner](banner.jpg)
@@ -127,6 +128,8 @@ to re-grant those permissions after reinstalling or rebuilding the app.
 
 `arstdhneio` is built with Swift 6.2+ and targets macOS 13+.
 
+For release prep and tagging, see [PUBLISHING.md](PUBLISHING.md).
+
 ### Grid layout parameters
 
 You can choose a different overlay key layout either from the menu bar `Configuration...` window
@@ -194,6 +197,8 @@ make run          # runs the executable from .build/debug
 make app          # builds dist/arstdhneio.app
 make install-app  # installs the app bundle into ~/Applications
 make open-app     # opens dist/arstdhneio.app
+make release-archive  # packages dist/arstdhneio-macos-app.zip
+make publish-check    # local release sanity check
 ```
 
 If you want the real menu-bar app flow during development, use:
