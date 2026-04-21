@@ -4,6 +4,32 @@
 
 Named after the [Deadmau5 song Asdfghjkl](https://www.youtube.com/watch?v=1aP910O2774)
 
+## Fork Notes
+
+This repository is a personal fork of [dave1010/Asdfghjkl](https://github.com/dave1010/Asdfghjkl/).
+All core credit for the original project, design, and implementation goes to
+[Dave Hulbert](https://github.com/dave1010). This fork was derived from upstream commit
+[`1daed86`](https://github.com/dave1010/Asdfghjkl/commit/1daed86b932b82c210e53ba8893de6a8618d366b).
+
+## Changes In This Fork
+
+Since upstream commit [`1daed86`](https://github.com/dave1010/Asdfghjkl/commit/1daed86b932b82c210e53ba8893de6a8618d366b), this fork adds:
+
+- Command-layer key translation, so printable bindings follow the current macOS layout's Command-equivalent mapping instead of the plain typed layer.
+- Automatic left-click on the third refinement, while still allowing `Space` to click earlier.
+- Configurable grid layouts via launch arguments or environment variables.
+- Built-in `colemak` and `colemak5` presets.
+- Custom grid-row definitions for both 4x10 and 4x5 layouts.
+- Multi-display handling that keeps 5-column layouts intact on the screen under the mouse cursor instead of splitting them across displays.
+- Additional tests covering command-layer translation, configurable layouts, partitioning rules, and the auto-click behavior.
+- Documentation updates for the fork-specific behavior and `.DS_Store` ignore housekeeping.
+
+## Disclaimer
+
+This fork was developed with LLM assistance because I wanted these input and layout features for
+real daily use, quickly. It is maintained in a practical, functionality-first way. If it is
+useful to you, feel free to use it, open issues, or send pull requests.
+
 ![banner](banner.jpg)
 
 ## What does it do?
