@@ -4,7 +4,7 @@
 
 > **A practical fork of _Asdfghjkl_.**
 
-Named after the [Deadmau5 song Asdfghjkl](https://www.youtube.com/watch?v=1aP910O2774)
+Named after the [Deadmau5 song Asdfghjkl](https://www.youtube.com/watch?v=1aP910O2774). And then adapted for Colemak layout
 
 ## Fork Notes
 
