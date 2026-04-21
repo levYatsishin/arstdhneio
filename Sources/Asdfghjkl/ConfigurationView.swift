@@ -21,58 +21,94 @@ struct ConfigurationView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Configuration")
-                .font(.title2)
-                .bold()
+        VStack(alignment: .leading, spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("Configuration")
+                        .font(.title2)
+                        .bold()
 
-            if usesLaunchOverrides {
-                Text("Launch arguments or environment variables are overriding the live layout for this session. Changes saved here will apply the next time you launch the app without overrides.")
-                    .font(.callout)
-                    .foregroundColor(.secondary)
-            }
+                    if usesLaunchOverrides {
+                        Text("Launch arguments or environment variables are overriding the live layout for this session. Changes saved here will apply the next time you launch the app without overrides.")
+                            .font(.callout)
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
 
-            Picker("Layout", selection: $draftSettings.layoutMode) {
-                ForEach(GridLayoutMode.allCases, id: \.self) { mode in
-                    Text(mode.displayName).tag(mode)
+                    settingsSection(title: "Layout") {
+                        radioGroup(
+                            title: "Layout",
+                            selection: $draftSettings.layoutMode,
+                            options: GridLayoutMode.allCases,
+                            label: \.displayName
+                        )
+                    }
+
+                    settingsSection(title: "Activation") {
+                        VStack(alignment: .leading, spacing: 10) {
+                            radioGroup(
+                                title: "Activation",
+                                selection: $draftSettings.activationMode,
+                                options: ActivationMode.allCases,
+                                label: \.displayName
+                            )
+
+                            Text(draftSettings.activationMode.descriptionText)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+
+                    settingsSection(title: "Custom rows") {
+                        VStack(alignment: .leading, spacing: 10) {
+                            TextEditor(text: $draftSettings.customRowsText)
+                                .font(.system(.body, design: .monospaced))
+                                .frame(minHeight: 92, maxHeight: 92)
+                                .padding(6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color(NSColor.textBackgroundColor))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color.secondary.opacity(0.3))
+                                )
+                                .disabled(draftSettings.layoutMode != .custom)
+
+                            Text("Enter four comma-separated rows, for example `neiuy,qwfpg,arstd,zxcvb` or `1234567890,qwertyuiop,asdfghjkl;,zxcvbnm,./`.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+
+                    settingsSection(title: "Effective rows") {
+                        Text(previewRows)
+                            .font(.system(.body, design: .monospaced))
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color(NSColor.textBackgroundColor).opacity(0.55))
+                            )
+                    }
+
+                    if let validationError = draftSettings.validationError {
+                        Text(validationError)
+                            .foregroundColor(.red)
+                            .font(.callout)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
-            }
-            .pickerStyle(.radioGroup)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Custom rows")
-                    .font(.headline)
-
-                TextEditor(text: $draftSettings.customRowsText)
-                    .font(.system(.body, design: .monospaced))
-                    .frame(height: 70)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.secondary.opacity(0.3))
-                    )
-                    .disabled(draftSettings.layoutMode != .custom)
-
-                Text("Enter four comma-separated rows, for example `neiuy,qwfpg,arstd,zxcvb` or `1234567890,qwertyuiop,asdfghjkl;,zxcvbnm,./`.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Effective rows")
-                    .font(.headline)
+            Divider()
 
-                Text(previewRows)
-                    .font(.system(.body, design: .monospaced))
-                    .textSelection(.enabled)
-            }
-
-            if let validationError = draftSettings.validationError {
-                Text(validationError)
-                    .foregroundColor(.red)
-                    .font(.callout)
-            }
-
-            HStack {
+            HStack(spacing: 12) {
                 Button("Reset to QWERTY") {
                     draftSettings = .default
                     onReset()
@@ -86,13 +122,37 @@ struct ConfigurationView: View {
                 .keyboardShortcut(.defaultAction)
                 .disabled(draftSettings.validationError != nil)
             }
+            .padding(20)
+            .background(Color(NSColor.windowBackgroundColor))
         }
-        .padding(20)
-        .frame(width: 520, height: 420)
+        .frame(width: 560)
     }
 
     private var previewRows: String {
         draftSettings.effectiveRowStrings.joined(separator: "\n")
+    }
+
+    private func settingsSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.headline)
+            content()
+        }
+    }
+
+    private func radioGroup<SelectionValue: Hashable>(
+        title: String,
+        selection: Binding<SelectionValue>,
+        options: [SelectionValue],
+        label: KeyPath<SelectionValue, String>
+    ) -> some View {
+        Picker(title, selection: selection) {
+            ForEach(options, id: \.self) { option in
+                Text(option[keyPath: label]).tag(option)
+            }
+        }
+        .pickerStyle(.radioGroup)
+        .labelsHidden()
     }
 }
 #endif

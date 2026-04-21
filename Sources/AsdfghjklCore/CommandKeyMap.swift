@@ -5,20 +5,49 @@ import Carbon
 
 protocol CommandKeyResolving {
     func printableCharacter(for keyCode: Int64, shift: Bool) -> Character?
+    func keyBinding(for printableCharacter: Character) -> CommandKeyBinding?
 }
 
-struct CommandKeyMap: CommandKeyResolving {
+public struct CommandKeyBinding: Equatable {
+    public let keyCode: UInt32
+    public let requiresShift: Bool
+
+    public init(keyCode: UInt32, requiresShift: Bool) {
+        self.keyCode = keyCode
+        self.requiresShift = requiresShift
+    }
+}
+
+public struct CommandKeyMap: CommandKeyResolving {
     typealias Translator = (_ keyCode: UInt16, _ modifierState: UInt32) -> String?
 
     private let translator: Translator
 
-    init(translator: @escaping Translator = SystemCommandKeyTranslator.translate) {
+    public init() {
+        self.translator = SystemCommandKeyTranslator.translate
+    }
+
+    init(translator: @escaping Translator) {
         self.translator = translator
     }
 
-    func printableCharacter(for keyCode: Int64, shift: Bool) -> Character? {
+    public func printableCharacter(for keyCode: Int64, shift: Bool) -> Character? {
         guard let keyCode = UInt16(exactly: keyCode) else { return nil }
         return translator(keyCode, Self.modifierState(includeShift: shift))?.first
+    }
+
+    public func keyBinding(for printableCharacter: Character) -> CommandKeyBinding? {
+        let target = Character(printableCharacter.lowercased())
+
+        for requiresShift in [false, true] {
+            for keyCode in UInt16(0)...UInt16(127) {
+                if translator(keyCode, Self.modifierState(includeShift: requiresShift))?.first == target {
+                    return CommandKeyBinding(keyCode: UInt32(keyCode), requiresShift: requiresShift)
+                }
+            }
+        }
+
+        return nil
     }
 
     static func modifierState(includeShift: Bool) -> UInt32 {

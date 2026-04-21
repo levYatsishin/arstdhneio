@@ -1,6 +1,7 @@
 #if os(macOS)
 import SwiftUI
 import AppKit
+import Carbon
 import arstdhneioCore
 
 struct AboutView: View {
@@ -22,7 +23,7 @@ struct AboutView: View {
                     Text("Usage:")
                         .font(.headline)
                     
-                    Text("1. Double tap Cmd to see a keyboard grid on your screen")
+                    Text("1. Press Cmd+; to show the keyboard grid")
                     Text("2. Tap a corresponding key to move the mouse to that area")
                     Text("3. Tap again (and again) to drill down")
                     Text("4. Tap Space at any point to click the mouse")
@@ -33,6 +34,7 @@ struct AboutView: View {
                     Text("You can also:")
                         .font(.headline)
                     
+                    Text("• Use Configuration to switch to Double-Command activation")
                     Text("• Tap Backspace to zoom back out to the previous level")
                     Text("• Tap Arrow Keys to move the selected tile")
                     Text("• Tap ' (apostrophe) to middle-click")
@@ -78,19 +80,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var appConfiguration = AppConfiguration.load()
     private var currentSettings = StoredAppSettings.default
     private var currentGridLayout = arstdhneioCore.GridLayout()
+    private var currentActivationMode = ActivationMode.commandSemicolon
     private var overlayController: OverlayController!
     private var inputManager: InputManager!
+    private var hotKeyManager: GlobalHotKeyManager?
     private var overlayWindows: [OverlayWindowController] = []
     private var screenRects: [GridRect] = [.defaultScreen]
     private var screenObserver: NSObjectProtocol?
+    private var keyboardInputSourceObserver: NSObjectProtocol?
     private var statusItem: NSStatusItem?
     private var launchAtLoginMenuItem: NSMenuItem?
     private var aboutWindow: NSWindow?
     private var configurationWindow: NSWindow?
+    private var previouslyActiveApplication: NSRunningApplication?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        currentSettings = appConfiguration.storedSettings
+        currentSettings = appConfiguration.effectiveSettings
         currentGridLayout = appConfiguration.gridLayout
+        currentActivationMode = appConfiguration.effectiveSettings.activationMode
         setupMenuBar()
 
         screenObserver = NotificationCenter.default.addObserver(
@@ -103,7 +110,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
 
-        configureRuntime(with: appConfiguration.gridLayout)
+        keyboardInputSourceObserver = DistributedNotificationCenter.default().addObserver(
+            forName: Notification.Name(rawValue: kTISNotifySelectedKeyboardInputSourceChanged as String),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.handleKeyboardInputSourceChange()
+            }
+        }
+
+        configureRuntime(layout: appConfiguration.gridLayout, activationMode: appConfiguration.effectiveSettings.activationMode)
     }
     
     private func setupMenuBar() {
@@ -204,13 +221,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func showConfiguration() {
         if configurationWindow == nil {
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 520, height: 420),
+                contentRect: NSRect(x: 0, y: 0, width: 560, height: 560),
                 styleMask: [.titled, .closable],
                 backing: .buffered,
                 defer: false
             )
             window.title = "Configuration"
             window.isReleasedWhenClosed = false
+            window.setContentSize(NSSize(width: 560, height: 560))
+            window.minSize = NSSize(width: 560, height: 520)
             configurationWindow = window
         }
 
@@ -249,6 +268,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let screenObserver {
             NotificationCenter.default.removeObserver(screenObserver)
         }
+        if let keyboardInputSourceObserver {
+            DistributedNotificationCenter.default().removeObserver(keyboardInputSourceObserver)
+        }
+        hotKeyManager?.stop()
         inputManager.stop()
         overlayWindows.forEach { $0.hide() }
     }
@@ -260,9 +283,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     
     private func updateWindowVisibility(for state: OverlayState) {
         if state.isActive {
+            if currentActivationMode == .commandSemicolon {
+                NSApp.activate(ignoringOtherApps: true)
+            }
             overlayWindows.forEach { $0.show() }
+            if currentActivationMode == .commandSemicolon {
+                overlayWindows.first?.focusForKeyboardInput()
+            }
         } else {
             overlayWindows.forEach { $0.hide() }
+            if currentActivationMode == .commandSemicolon {
+                previouslyActiveApplication?.activate(options: [])
+                previouslyActiveApplication = nil
+            }
         }
     }
 
@@ -273,16 +306,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let slices = GridPartitioner.slices(for: screenRects, layout: currentGridLayout)
         let gridSlices = slices.isEmpty ? GridPartitioner.slices(for: [.defaultScreen], layout: currentGridLayout) : slices
 
-        overlayWindows = zip(screens, gridSlices).map {
+        overlayWindows = Array(zip(screens, gridSlices).enumerated()).map {
             OverlayWindowController(
-                screen: $0.0,
+                screen: $0.element.0,
                 model: overlayVisualModel,
-                gridSlice: $0.1
+                gridSlice: $0.element.1,
+                handlesKeyboardInput: currentActivationMode == .commandSemicolon && $0.offset == 0,
+                keyDownHandler: currentActivationMode == .commandSemicolon ? { [weak self] event in
+                    self?.handleOverlayKeyEvent(event) ?? false
+                } : nil
             )
         }
 
         if overlayController.isActive {
             overlayWindows.forEach { $0.show() }
+            if currentActivationMode == .commandSemicolon {
+                overlayWindows.first?.focusForKeyboardInput()
+            }
         }
     }
 
@@ -305,8 +345,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         alert.runModal()
     }
 
-    private func configureRuntime(with gridLayout: arstdhneioCore.GridLayout) {
+    private func configureRuntime(layout gridLayout: arstdhneioCore.GridLayout, activationMode: ActivationMode) {
         currentGridLayout = gridLayout
+        currentActivationMode = activationMode
+        hotKeyManager?.stop()
         inputManager?.stop()
         overlayWindows.forEach { $0.hide() }
 
@@ -329,14 +371,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         inputManager = InputManager(overlayController: overlayController)
-        inputManager.onToggle = { [weak self] in
-            Task { @MainActor in
-                self?.rebuildOverlayWindows()
+        if activationMode == .doubleCommandTap {
+            inputManager.onToggle = { [weak self] in
+                Task { @MainActor in
+                    self?.rebuildOverlayWindows()
+                }
             }
+            inputManager.start()
+        } else {
+            inputManager.onToggle = nil
+            let hotKeyManager = GlobalHotKeyManager { [weak self] in
+                Task { @MainActor in
+                    self?.handleCommandSemicolonActivation()
+                }
+            }
+            hotKeyManager.start()
+            self.hotKeyManager = hotKeyManager
         }
 
         rebuildOverlayWindows()
-        inputManager.start()
     }
 
     private func saveConfiguration(_ settings: StoredAppSettings) {
@@ -344,13 +397,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settingsStore.save(settings)
 
         if !appConfiguration.usesLaunchOverrides, let layout = settings.gridLayout() {
-            appConfiguration = AppConfiguration(gridLayout: layout, storedSettings: settings, usesLaunchOverrides: false)
-            configureRuntime(with: layout)
+            appConfiguration = AppConfiguration(
+                gridLayout: layout,
+                storedSettings: settings,
+                effectiveSettings: settings,
+                usesLaunchOverrides: false
+            )
+            configureRuntime(layout: layout, activationMode: settings.activationMode)
         }
     }
 
     private func resetConfiguration() {
         saveConfiguration(.default)
+    }
+
+    private func handleCommandSemicolonActivation() {
+        if !overlayController.isActive {
+            previouslyActiveApplication = NSWorkspace.shared.frontmostApplication
+        }
+        overlayController.toggle()
+    }
+
+    private func handleKeyboardInputSourceChange() {
+        guard currentActivationMode == .commandSemicolon else { return }
+        hotKeyManager?.start()
+    }
+
+    private func handleOverlayKeyEvent(_ event: NSEvent) -> Bool {
+        let flags = CGEventFlags(rawValue: UInt64(event.modifierFlags.rawValue))
+        return inputManager.handleKeyCodeDown(Int64(event.keyCode), flags: flags)
     }
 }
 #else

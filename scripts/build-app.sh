@@ -37,3 +37,4 @@ if command -v codesign >/dev/null 2>&1; then
 fi
 
 echo "Built app bundle at $APP_BUNDLE"
+echo "Note: this bundle is ad-hoc signed for local use. Rebuilding or reinstalling it may require re-granting macOS privacy permissions."

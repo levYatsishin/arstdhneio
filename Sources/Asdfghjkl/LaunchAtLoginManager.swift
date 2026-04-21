@@ -102,6 +102,7 @@ final class LaunchAtLoginManager {
             try service.unregister()
         case .requiresApproval:
             service.openSystemSettings()
+            return .requiresApproval
         case .notRegistered, .notFound:
             try service.register()
         case .unavailable:

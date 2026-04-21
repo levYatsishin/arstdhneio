@@ -18,6 +18,7 @@ All core credit for the original project, design, and implementation goes to
 Since upstream commit [`1daed86`](https://github.com/dave1010/Asdfghjkl/commit/1daed86b932b82c210e53ba8893de6a8618d366b), this fork adds:
 
 - Command-layer key translation, so printable bindings follow the current macOS layout's Command-equivalent mapping instead of the plain typed layer.
+- Lower-permission `Cmd+;` activation as the default path, using the active layout's command-layer mapping for `;`, with optional Double-Command activation retained as a configurable advanced mode.
 - Configurable grid layouts via launch arguments or environment variables.
 - Built-in `colemak` and `colemak5` presets.
 - Custom grid-row definitions for both 4x10 and 4x5 layouts.
@@ -31,7 +32,7 @@ Since upstream commit [`1daed86`](https://github.com/dave1010/Asdfghjkl/commit/1
 
 ## What does it do?
 
-1. Double tap `Cmd` to see a keyboard grid on your screen.
+1. Press `Cmd` plus the key that currently maps to `;` in your active layout's command layer to see the keyboard grid on your screen.
 2. Tap a corresponding key to move the mouse to that area.
 3. Tap again (and again) to drill down.
 4. Tap `Space` at any point to click the mouse.
@@ -39,6 +40,9 @@ Since upstream commit [`1daed86`](https://github.com/dave1010/Asdfghjkl/commit/1
 The overlay resolves printable bindings through the current macOS layout's Command-equivalent
 mapping, so layouts that expose stable shortcut characters under `Cmd` keep the same arstdhneio
 bindings even when their normal typing layer changes.
+
+If you prefer the original interaction, the menu bar `Configuration...` window lets you switch the
+activation mode back to Double-Command Tap.
 
 You can also:
 
@@ -72,8 +76,9 @@ Mice are slow and a long way away from the keyboard.
    xattr -cr /Applications/arstdhneio.app
    ```
 4. Launch `arstdhneio.app`.
-5. Grant the required macOS permissions (Input Monitoring and Accessibility) when prompted so the app can create its global event tap.
-6. If you want it to start automatically after login, open the menu bar item and enable `Launch at Login`.
+5. Grant Accessibility when prompted so the app can move and click the pointer.
+6. If you enable the optional `Double-Command Tap` activation mode, also grant Input Monitoring.
+7. If you want it to start automatically after login, open the menu bar item and enable `Launch at Login`.
 
 ## How does it work?
 
@@ -90,23 +95,33 @@ testing aligned with the display that owns the tapped keys.
 
 ### Permissions
 
-The macOS app installs the global CGEvent tap on launch (requires Input Monitoring and
-Accessibility permissions) and rebuilds overlay windows whenever displays change, keeping a
-window on every attached screen. Quit the app to tear down the tap cleanly.
+By default, `arstdhneio` activates via a registered `Cmd+;` hotkey and captures overlay key presses
+only while its overlay window is focused. In that mode it does not need Input Monitoring, but it
+still needs Accessibility permission to move and click the pointer.
+
+The activation key follows the current layout's command-layer mapping for `;`, not just the US
+physical semicolon key position. If you switch keyboard layouts, the app re-registers that hotkey.
+
+If you switch the activation mode to Double-Command Tap, the app installs a global CGEvent tap and
+that mode requires both Input Monitoring and Accessibility.
 
 The Launch at Login toggle is only available from the bundled `arstdhneio.app`. If you run the
 raw executable with `swift run` or from `.build/debug`, the menu item stays disabled because
 `SMAppService.mainApp` only applies to the app bundle.
 
-The menu bar also exposes `Configuration...`, which lets you change the saved layout preset or
-custom rows. Those settings are persisted in `UserDefaults`. If you launch the app with
-`--grid-keymap` or `--grid-key-rows`, those launch-time overrides still win for that session.
+The menu bar also exposes `Configuration...`, which lets you change the saved activation mode,
+layout preset, or custom rows. Those settings are persisted in `UserDefaults`. If you launch the
+app with `--grid-keymap`, `--grid-key-rows`, or `--activation-mode`, those launch-time overrides
+still win for that session.
 
 Printable bindings are resolved from the current keyboard layout's Command-equivalent translation
 rather than the plain typed character, matching the same character mapping macOS uses for
 shortcuts and custom layouts that provide a dedicated Command layer.
 
-On first launch, macOS may block the event tap unless the app is allowed under **System Settings > Privacy & Security > Input Monitoring** and **Accessibility**. The app now surfaces a dialog when the tap cannot be created so you can grant the permissions and restart.
+On first launch, macOS may ask for Accessibility permission. If you later switch to
+Double-Command activation, the app will also need **System Settings > Privacy & Security > Input
+Monitoring**. Because this repo currently builds an unsigned local app bundle, macOS may ask you
+to re-grant those permissions after reinstalling or rebuilding the app.
 
 ## Development
 
@@ -156,6 +171,12 @@ The same options can also be provided via environment variables:
 ```sh
 ARSTDHNEIO_GRID_KEYMAP=colemak5
 ARSTDHNEIO_GRID_KEY_ROWS="1234567890,qwfpgjluy;,arstdhneio,zxcvbkm,./"
+```
+
+You can also override the activation mode for a single launch:
+
+```sh
+swift run arstdhneio --activation-mode doubleCommandTap
 ```
 
 Custom rows must contain four comma-separated rows with the same width and no duplicate

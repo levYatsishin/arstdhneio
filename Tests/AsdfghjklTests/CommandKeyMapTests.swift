@@ -34,5 +34,33 @@ final class CommandKeyMapTests: XCTestCase {
         XCTAssertNil(map.printableCharacter(for: -1, shift: false))
         XCTAssertNil(map.printableCharacter(for: Int64(UInt16.max) + 1, shift: false))
     }
+
+    func testKeyBindingPrefersNonShiftMatch() {
+        let map = CommandKeyMap { keyCode, modifierState in
+            switch (keyCode, modifierState) {
+            case (17, CommandKeyMap.modifierState(includeShift: false)):
+                return ";"
+            case (18, CommandKeyMap.modifierState(includeShift: true)):
+                return ";"
+            default:
+                return nil
+            }
+        }
+
+        XCTAssertEqual(map.keyBinding(for: ";"), CommandKeyBinding(keyCode: 17, requiresShift: false))
+    }
+
+    func testKeyBindingFallsBackToShiftMatch() {
+        let map = CommandKeyMap { keyCode, modifierState in
+            switch (keyCode, modifierState) {
+            case (18, CommandKeyMap.modifierState(includeShift: true)):
+                return ";"
+            default:
+                return nil
+            }
+        }
+
+        XCTAssertEqual(map.keyBinding(for: ";"), CommandKeyBinding(keyCode: 18, requiresShift: true))
+    }
 }
 #endif

@@ -227,5 +227,9 @@ private struct StubCommandKeyResolver: CommandKeyResolving {
     func printableCharacter(for keyCode: Int64, shift: Bool) -> Character? {
         printableCharacter
     }
+
+    func keyBinding(for printableCharacter: Character) -> CommandKeyBinding? {
+        nil
+    }
 }
 #endif

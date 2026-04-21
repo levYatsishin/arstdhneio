@@ -1,6 +1,7 @@
 import Foundation
 #if os(macOS)
 import AppKit
+import ApplicationServices
 import CoreGraphics
 #endif
 
@@ -8,6 +9,45 @@ public final class InputManager {
     private let overlayController: OverlayController
     private var commandRecognizer = CommandTapRecognizer()
     #if os(macOS)
+    private struct PermissionStatus {
+        let hasInputMonitoring: Bool
+        let hasAccessibility: Bool
+
+        var missingPermissions: [PermissionKind] {
+            var missing: [PermissionKind] = []
+            if !hasInputMonitoring {
+                missing.append(.inputMonitoring)
+            }
+            if !hasAccessibility {
+                missing.append(.accessibility)
+            }
+            return missing
+        }
+    }
+
+    private enum PermissionKind {
+        case inputMonitoring
+        case accessibility
+
+        var displayName: String {
+            switch self {
+            case .inputMonitoring:
+                return "Input Monitoring"
+            case .accessibility:
+                return "Accessibility"
+            }
+        }
+
+        var settingsURL: URL? {
+            switch self {
+            case .inputMonitoring:
+                return URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")
+            case .accessibility:
+                return URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+            }
+        }
+    }
+
     private let commandKeyResolver: any CommandKeyResolving
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -47,7 +87,7 @@ public final class InputManager {
             userInfo: UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
         ) else {
             Task { @MainActor in
-                InputManager.presentMissingPermissionsAlert()
+                InputManager.presentGlobalMonitoringAlert(permissionStatus: InputManager.currentPermissionStatus())
             }
             return
         }
@@ -189,7 +229,7 @@ public final class InputManager {
     }
 
     @discardableResult
-    func handleKeyCodeDown(_ keyCode: Int64, flags: CGEventFlags = []) -> Bool {
+    public func handleKeyCodeDown(_ keyCode: Int64, flags: CGEventFlags = []) -> Bool {
         switch keyDownResolution(for: keyCode, flags: flags) {
         case .character(let character):
             return handleKeyDown(character, commandActive: flags.contains(.maskCommand))
@@ -243,19 +283,42 @@ public final class InputManager {
     }
 
     @MainActor
-    private static func presentMissingPermissionsAlert() {
+    private static func presentGlobalMonitoringAlert(permissionStatus: PermissionStatus) {
         let alert = NSAlert()
-        alert.messageText = "Enable Input Monitoring and Accessibility"
-        alert.informativeText = "arstdhneio needs Input Monitoring and Accessibility permissions to listen for the Cmd double-tap. Open System Settings > Privacy & Security, add arstdhneio under each section, then restart the app."
-        alert.addButton(withTitle: "Open Input Monitoring")
+        alert.alertStyle = .warning
+
+        if permissionStatus.missingPermissions.isEmpty {
+            alert.messageText = "Unable to start double-Command activation"
+            alert.informativeText = "arstdhneio could not install the global keyboard listener required for Double-Command activation. If you just reinstalled or rebuilt the app bundle, remove any old arstdhneio entries from Privacy & Security, re-add the current app bundle, and relaunch it."
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+            return
+        }
+
+        let missingNames = permissionStatus.missingPermissions.map(\.displayName).joined(separator: " and ")
+        alert.messageText = "Enable \(missingNames)"
+        alert.informativeText = "Double-Command activation uses a global keyboard listener. To use this mode, grant arstdhneio access under System Settings > Privacy & Security > \(missingNames), then relaunch the app."
+
+        for permission in permissionStatus.missingPermissions {
+            alert.addButton(withTitle: "Open \(permission.displayName)")
+        }
         alert.addButton(withTitle: "OK")
 
         let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent") {
-                NSWorkspace.shared.open(url)
-            }
+        let permissionButtons = permissionStatus.missingPermissions
+        let buttonIndex = response.rawValue - NSApplication.ModalResponse.alertFirstButtonReturn.rawValue
+        guard buttonIndex >= 0, buttonIndex < permissionButtons.count else { return }
+
+        if let url = permissionButtons[Int(buttonIndex)].settingsURL {
+            NSWorkspace.shared.open(url)
         }
+    }
+
+    private static func currentPermissionStatus() -> PermissionStatus {
+        PermissionStatus(
+            hasInputMonitoring: CGPreflightListenEventAccess(),
+            hasAccessibility: AXIsProcessTrusted()
+        )
     }
     #endif
 }

@@ -46,11 +46,39 @@ enum GridLayoutMode: String, CaseIterable, Sendable {
     }
 }
 
+enum ActivationMode: String, CaseIterable, Sendable {
+    case commandSemicolon
+    case doubleCommandTap
+
+    var displayName: String {
+        switch self {
+        case .commandSemicolon:
+            return "Cmd+; (Recommended)"
+        case .doubleCommandTap:
+            return "Double-Command Tap"
+        }
+    }
+
+    var descriptionText: String {
+        switch self {
+        case .commandSemicolon:
+            return "Uses a registered global shortcut and local overlay keyboard handling. This is the lower-permission mode."
+        case .doubleCommandTap:
+            return "Uses a global event tap to detect a double tap of Command. This mode requires Input Monitoring in addition to Accessibility."
+        }
+    }
+}
+
 struct StoredAppSettings: Equatable, Sendable {
+    var activationMode: ActivationMode
     var layoutMode: GridLayoutMode
     var customRowsText: String
 
-    static let `default` = StoredAppSettings(layoutMode: .qwerty, customRowsText: "")
+    static let `default` = StoredAppSettings(
+        activationMode: .commandSemicolon,
+        layoutMode: .qwerty,
+        customRowsText: ""
+    )
 
     var trimmedCustomRowsText: String {
         customRowsText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -99,16 +127,25 @@ struct StoredAppSettings: Equatable, Sendable {
 
     static func from(layout: GridLayout) -> StoredAppSettings {
         if let preset = GridLayoutPreset.allCases.first(where: { $0.rowStrings == layout.rowStrings }) {
-            return StoredAppSettings(layoutMode: GridLayoutMode(preset: preset), customRowsText: "")
+            return StoredAppSettings(
+                activationMode: .commandSemicolon,
+                layoutMode: GridLayoutMode(preset: preset),
+                customRowsText: ""
+            )
         }
 
-        return StoredAppSettings(layoutMode: .custom, customRowsText: layout.rowStrings.joined(separator: ","))
+        return StoredAppSettings(
+            activationMode: .commandSemicolon,
+            layoutMode: .custom,
+            customRowsText: layout.rowStrings.joined(separator: ",")
+        )
     }
 }
 
 struct AppConfiguration {
     let gridLayout: GridLayout
     let storedSettings: StoredAppSettings
+    let effectiveSettings: StoredAppSettings
     let usesLaunchOverrides: Bool
 
     static func load(
@@ -117,22 +154,53 @@ struct AppConfiguration {
         userDefaults: UserDefaults = .standard
     ) -> AppConfiguration {
         let storedSettings = StoredAppSettingsStore(userDefaults: userDefaults).load()
+        let activationArgument = argumentValue(named: "--activation-mode", in: arguments) ?? environment["ARSTDHNEIO_ACTIVATION_MODE"]
         let layoutArgument = argumentValue(named: "--grid-keymap", in: arguments) ?? environment["ARSTDHNEIO_GRID_KEYMAP"] ?? environment["ASDFGHJKL_GRID_KEYMAP"]
         let rowsArgument = argumentValue(named: "--grid-key-rows", in: arguments) ?? environment["ARSTDHNEIO_GRID_KEY_ROWS"] ?? environment["ASDFGHJKL_GRID_KEY_ROWS"]
+        let activationMode = ActivationMode(rawValue: activationArgument ?? "") ?? storedSettings.activationMode
 
         if let rowsArgument,
            let layout = GridLayout(rowStrings: rowsArgument.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }) {
-            return AppConfiguration(gridLayout: layout, storedSettings: storedSettings, usesLaunchOverrides: true)
+            var effectiveSettings = StoredAppSettings.from(layout: layout)
+            effectiveSettings.activationMode = activationMode
+            return AppConfiguration(
+                gridLayout: layout,
+                storedSettings: storedSettings,
+                effectiveSettings: effectiveSettings,
+                usesLaunchOverrides: true
+            )
         }
 
         if let layoutArgument,
            let preset = GridLayoutPreset(rawValue: layoutArgument.lowercased()) {
-            return AppConfiguration(gridLayout: GridLayout(preset: preset), storedSettings: storedSettings, usesLaunchOverrides: true)
+            let layout = GridLayout(preset: preset)
+            var effectiveSettings = StoredAppSettings.from(layout: layout)
+            effectiveSettings.activationMode = activationMode
+            return AppConfiguration(
+                gridLayout: layout,
+                storedSettings: storedSettings,
+                effectiveSettings: effectiveSettings,
+                usesLaunchOverrides: true
+            )
+        }
+
+        if activationArgument != nil {
+            return AppConfiguration(
+                gridLayout: storedSettings.gridLayout() ?? GridLayout(),
+                storedSettings: storedSettings,
+                effectiveSettings: StoredAppSettings(
+                    activationMode: activationMode,
+                    layoutMode: storedSettings.layoutMode,
+                    customRowsText: storedSettings.customRowsText
+                ),
+                usesLaunchOverrides: true
+            )
         }
 
         return AppConfiguration(
             gridLayout: storedSettings.gridLayout() ?? GridLayout(),
             storedSettings: storedSettings,
+            effectiveSettings: storedSettings,
             usesLaunchOverrides: false
         )
     }
@@ -149,6 +217,7 @@ struct AppConfiguration {
 
 struct StoredAppSettingsStore {
     private enum Keys {
+        static let activationMode = "app.activationMode"
         static let layoutMode = "app.layoutMode"
         static let customRows = "app.customRows"
     }
@@ -160,12 +229,14 @@ struct StoredAppSettingsStore {
     }
 
     func load() -> StoredAppSettings {
+        let activationMode = ActivationMode(rawValue: userDefaults.string(forKey: Keys.activationMode) ?? "") ?? .commandSemicolon
         let mode = GridLayoutMode(rawValue: userDefaults.string(forKey: Keys.layoutMode) ?? "") ?? .qwerty
         let customRowsText = userDefaults.string(forKey: Keys.customRows) ?? ""
-        return StoredAppSettings(layoutMode: mode, customRowsText: customRowsText)
+        return StoredAppSettings(activationMode: activationMode, layoutMode: mode, customRowsText: customRowsText)
     }
 
     func save(_ settings: StoredAppSettings) {
+        userDefaults.set(settings.activationMode.rawValue, forKey: Keys.activationMode)
         userDefaults.set(settings.layoutMode.rawValue, forKey: Keys.layoutMode)
         userDefaults.set(settings.customRowsText, forKey: Keys.customRows)
     }

@@ -17,3 +17,4 @@ ditto "$APP_PATH" "$TARGET_PATH"
 xattr -cr "$TARGET_PATH" >/dev/null 2>&1 || true
 
 echo "Installed app bundle to $TARGET_PATH"
+echo "Note: because this local build is not signed with a stable developer identity, macOS may ask you to re-grant Accessibility or Input Monitoring after reinstalling it."
