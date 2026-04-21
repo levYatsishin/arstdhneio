@@ -1,7 +1,6 @@
 import Foundation
 
 public final class OverlayController {
-    private static let autoClickRefinementDepth = 3
     private var state: OverlayState
     private let gridLayout: GridLayout
     private let screenBoundsProvider: () -> [GridRect]
@@ -95,12 +94,7 @@ public final class OverlayController {
 
         applyRefinement(refined)
         mouseActionPerformer.moveCursor(to: state.targetPoint)
-        if refinementCount >= Self.autoClickRefinementDepth {
-            mouseActionPerformer.click(at: state.targetPoint)
-            deactivate()
-        } else {
-            notifyStateChange()
-        }
+        notifyStateChange()
         return refined
     }
     
@@ -131,7 +125,7 @@ public final class OverlayController {
         let parentRect = state.currentRect
         state.currentRect = refined
         refinementCount += 1
-        state.isGridVisible = refinementCount < Self.autoClickRefinementDepth
+        state.isGridVisible = refinementCount < 3
         
         // Calculate position within parent grid
         let relativeX = refined.origin.x - parentRect.origin.x
@@ -175,7 +169,7 @@ public final class OverlayController {
         state.currentRect = previous.rect
         selectedSliceIndex = previous.sliceIndex
         refinementCount = previous.refinementCount
-        state.isGridVisible = refinementCount < Self.autoClickRefinementDepth
+        state.isGridVisible = refinementCount < 3
         
         if refinementCount == 0 {
             if usesFullLayoutPerScreen,

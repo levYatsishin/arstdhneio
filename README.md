@@ -18,13 +18,11 @@ All core credit for the original project, design, and implementation goes to
 Since upstream commit [`1daed86`](https://github.com/dave1010/Asdfghjkl/commit/1daed86b932b82c210e53ba8893de6a8618d366b), this fork adds:
 
 - Command-layer key translation, so printable bindings follow the current macOS layout's Command-equivalent mapping instead of the plain typed layer.
-- Automatic left-click on the third refinement, while still allowing `Space` to click earlier.
 - Configurable grid layouts via launch arguments or environment variables.
 - Built-in `colemak` and `colemak5` presets.
 - Custom grid-row definitions for both 4x10 and 4x5 layouts.
 - Multi-display handling that keeps 5-column layouts intact on the screen under the mouse cursor instead of splitting them across displays.
-- Additional tests covering command-layer translation, configurable layouts, partitioning rules, and the auto-click behavior.
-- Documentation updates for the fork-specific behavior and `.DS_Store` ignore housekeeping.
+- Additional tests covering command-layer translation, configurable layouts, partitioning rules, and overlay navigation behavior.
 
 ![banner](banner.jpg)
 
@@ -33,9 +31,7 @@ Since upstream commit [`1daed86`](https://github.com/dave1010/Asdfghjkl/commit/1
 1. Double tap `Cmd` to see a keyboard grid on your screen.
 2. Tap a corresponding key to move the mouse to that area.
 3. Tap again (and again) to drill down.
-4. After the third refinement, arstdhneio automatically left-clicks the final target.
-
-You can still tap `Space` earlier to click before reaching the auto-click depth.
+4. Tap `Space` at any point to click the mouse.
 
 The overlay resolves printable bindings through the current macOS layout's Command-equivalent
 mapping, so layouts that expose stable shortcut characters under `Cmd` keep the same arstdhneio

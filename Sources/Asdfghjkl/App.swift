@@ -25,7 +25,7 @@ struct AboutView: View {
                     Text("1. Double tap Cmd to see a keyboard grid on your screen")
                     Text("2. Tap a corresponding key to move the mouse to that area")
                     Text("3. Tap again (and again) to drill down")
-                    Text("4. The third refinement automatically left-clicks the final target")
+                    Text("4. Tap Space at any point to click the mouse")
                 }
                 .padding(.vertical, 4)
                 
@@ -33,7 +33,6 @@ struct AboutView: View {
                     Text("You can also:")
                         .font(.headline)
                     
-                    Text("• Tap Space to click before the third refinement")
                     Text("• Tap Backspace to zoom back out to the previous level")
                     Text("• Tap Arrow Keys to move the selected tile")
                     Text("• Tap ' (apostrophe) to middle-click")
