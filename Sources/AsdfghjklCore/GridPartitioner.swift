@@ -24,13 +24,29 @@ public struct GridSlice {
 }
 
 public enum GridPartitioner {
+    public static func prefersFullLayoutPerScreen(for screens: [GridRect], layout: GridLayout) -> Bool {
+        screens.count > 1 && layout.columns <= 5
+    }
+
     public static func slices(for screens: [GridRect], layout: GridLayout) -> [GridSlice] {
+        if prefersFullLayoutPerScreen(for: screens, layout: layout) {
+            return fullLayoutSlices(for: screens, layout: layout)
+        }
+
         let ranges = columnRanges(totalColumns: layout.columns, screenCount: screens.count)
         guard !ranges.isEmpty else { return [] }
 
         let count = min(ranges.count, screens.count)
         return (0..<count).map { index in
             GridSlice(screenRect: screens[index], columnRange: ranges[index], baseLayout: layout)
+        }
+    }
+
+    public static func fullLayoutSlices(for screens: [GridRect], layout: GridLayout) -> [GridSlice] {
+        guard layout.columns > 0 else { return [] }
+        let fullRange = 0...(layout.columns - 1)
+        return screens.map { screen in
+            GridSlice(screenRect: screen, columnRange: fullRange, baseLayout: layout)
         }
     }
 

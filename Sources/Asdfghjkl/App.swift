@@ -25,7 +25,7 @@ struct AboutView: View {
                     Text("1. Double tap Cmd to see a keyboard grid on your screen")
                     Text("2. Tap a corresponding key to move the mouse to that area")
                     Text("3. Tap again (and again) to drill down")
-                    Text("4. Tap Space at any point to click the mouse")
+                    Text("4. The third refinement automatically left-clicks the final target")
                 }
                 .padding(.vertical, 4)
                 
@@ -33,6 +33,7 @@ struct AboutView: View {
                     Text("You can also:")
                         .font(.headline)
                     
+                    Text("• Tap Space to click before the third refinement")
                     Text("• Tap Backspace to zoom back out to the previous level")
                     Text("• Tap Arrow Keys to move the selected tile")
                     Text("• Tap ' (apostrophe) to middle-click")
@@ -73,7 +74,8 @@ struct AsdfghjklApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let overlayVisualModel = OverlayVisualModel()
-    private let gridLayout = AsdfghjklCore.GridLayout()
+    private let appConfiguration = AppConfiguration.load()
+    private lazy var gridLayout = appConfiguration.gridLayout
     private var overlayController: OverlayController!
     private var inputManager: InputManager!
     private var overlayWindows: [OverlayWindowController] = []
@@ -89,6 +91,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             screenBoundsProvider: { [weak self] in
                 guard let self else { return [.defaultScreen] }
                 return self.screenRects
+            },
+            cursorPositionProvider: {
+                guard let mouseLocation = CGEvent(source: nil)?.location else { return nil }
+                return GridPoint(x: mouseLocation.x, y: mouseLocation.y)
             }
         )
 

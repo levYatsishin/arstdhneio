@@ -1,23 +1,28 @@
 import Foundation
 
 public final class OverlayController {
+    private static let autoClickRefinementDepth = 3
     private var state: OverlayState
     private let gridLayout: GridLayout
     private let screenBoundsProvider: () -> [GridRect]
+    private let cursorPositionProvider: () -> GridPoint?
     private let mouseActionPerformer: MouseActionPerforming
     private var gridSlices: [GridSlice] = []
     private var selectedSliceIndex: Int?
     private var refinementCount: Int = 0
     private var history: [(rect: GridRect, sliceIndex: Int?, refinementCount: Int)] = []
+    private var usesFullLayoutPerScreen: Bool = false
     public var stateDidChange: ((OverlayState) -> Void)?
 
     public init(
         gridLayout: GridLayout = GridLayout(),
         screenBoundsProvider: @escaping () -> [GridRect] = { [.defaultScreen] },
+        cursorPositionProvider: @escaping () -> GridPoint? = { nil },
         mouseActionPerformer: MouseActionPerforming = SystemMouseActionPerformer()
     ) {
         self.gridLayout = gridLayout
         self.screenBoundsProvider = screenBoundsProvider
+        self.cursorPositionProvider = cursorPositionProvider
         self.mouseActionPerformer = mouseActionPerformer
         self.state = OverlayState()
     }
@@ -30,8 +35,10 @@ public final class OverlayController {
     public func start() {
         let screens = screenBoundsProvider()
         gridSlices = GridPartitioner.slices(for: screens, layout: gridLayout)
+        usesFullLayoutPerScreen = GridPartitioner.prefersFullLayoutPerScreen(for: screens, layout: gridLayout)
         if gridSlices.isEmpty {
             gridSlices = GridPartitioner.slices(for: [.defaultScreen], layout: gridLayout)
+            usesFullLayoutPerScreen = false
         }
 
         print("[OverlayController] ✓ ACTIVATED")
@@ -42,8 +49,16 @@ public final class OverlayController {
             print("[OverlayController]   Slice \(index): columns \(slice.columnRange), screen bounds: \(slice.screenRect)")
         }
 
-        let bounds = combinedBounds(for: screens)
-        resetState(to: bounds)
+        if usesFullLayoutPerScreen,
+           let sliceIndex = initialScreenSliceIndex(for: screens),
+           sliceIndex < gridSlices.count {
+            let screenBounds = gridSlices[sliceIndex].screenRect
+            resetState(to: screenBounds)
+            selectedSliceIndex = sliceIndex
+        } else {
+            let bounds = combinedBounds(for: screens)
+            resetState(to: bounds)
+        }
         notifyStateChange()
     }
     
@@ -80,11 +95,17 @@ public final class OverlayController {
 
         applyRefinement(refined)
         mouseActionPerformer.moveCursor(to: state.targetPoint)
-        notifyStateChange()
+        if refinementCount >= Self.autoClickRefinementDepth {
+            mouseActionPerformer.click(at: state.targetPoint)
+            deactivate()
+        } else {
+            notifyStateChange()
+        }
         return refined
     }
     
     private func selectScreenIfNeeded(for coordinate: GridCoordinate) {
+        guard !usesFullLayoutPerScreen else { return }
         guard selectedSliceIndex == nil, gridSlices.count > 1 else { return }
         
         selectedSliceIndex = gridSlices.firstIndex { $0.columnRange.contains(coordinate.column) }
@@ -110,7 +131,7 @@ public final class OverlayController {
         let parentRect = state.currentRect
         state.currentRect = refined
         refinementCount += 1
-        state.isGridVisible = refinementCount < 3
+        state.isGridVisible = refinementCount < Self.autoClickRefinementDepth
         
         // Calculate position within parent grid
         let relativeX = refined.origin.x - parentRect.origin.x
@@ -154,17 +175,27 @@ public final class OverlayController {
         state.currentRect = previous.rect
         selectedSliceIndex = previous.sliceIndex
         refinementCount = previous.refinementCount
-        state.isGridVisible = refinementCount < 3
+        state.isGridVisible = refinementCount < Self.autoClickRefinementDepth
         
         if refinementCount == 0 {
-            // Zooming out to the initial full-screen state
-            // Reset to show overlay on all screens
-            selectedSliceIndex = gridSlices.count == 1 ? 0 : nil
-            let screens = screenBoundsProvider()
-            let bounds = combinedBounds(for: screens)
-            state.currentRect = bounds
-            state.gridRect = bounds
-            print("[OverlayController] Zoomed out to full-screen overlay on all screens")
+            if usesFullLayoutPerScreen,
+               let sliceIndex = initialScreenSliceIndex(for: screenBoundsProvider()),
+               sliceIndex < gridSlices.count {
+                selectedSliceIndex = sliceIndex
+                let screenBounds = gridSlices[sliceIndex].screenRect
+                state.currentRect = screenBounds
+                state.gridRect = screenBounds
+                print("[OverlayController] Zoomed out to full-grid overlay on selected screen")
+            } else {
+                // Zooming out to the initial full-screen state
+                // Reset to show overlay on all screens
+                selectedSliceIndex = gridSlices.count == 1 ? 0 : nil
+                let screens = screenBoundsProvider()
+                let bounds = combinedBounds(for: screens)
+                state.currentRect = bounds
+                state.gridRect = bounds
+                print("[OverlayController] Zoomed out to full-screen overlay on all screens")
+            }
         }
         
         print("[OverlayController] Zoomed out to depth \(refinementCount)")
@@ -268,5 +299,21 @@ public final class OverlayController {
         let maxY = rects.map { $0.minY + $0.height }.max() ?? (first.minY + first.height)
 
         return GridRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+    }
+
+    private func initialScreenSliceIndex(for screens: [GridRect]) -> Int? {
+        if let cursorPoint = cursorPositionProvider(),
+           let screenIndex = screens.firstIndex(where: { screenContains(cursorPoint, in: $0) }) {
+            return screenIndex
+        }
+
+        return screens.isEmpty ? nil : 0
+    }
+
+    private func screenContains(_ point: GridPoint, in rect: GridRect) -> Bool {
+        point.x >= rect.minX &&
+        point.y >= rect.minY &&
+        point.x < rect.minX + rect.width &&
+        point.y < rect.minY + rect.height
     }
 }

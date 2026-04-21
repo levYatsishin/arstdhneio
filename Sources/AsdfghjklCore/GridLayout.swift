@@ -50,6 +50,38 @@ public struct GridCoordinate: Hashable, Equatable {
     public let column: Int
 }
 
+public enum GridLayoutPreset: String, CaseIterable, Sendable {
+    case qwerty
+    case colemak
+    case colemak5
+
+    public var rowStrings: [String] {
+        switch self {
+        case .qwerty:
+            return [
+                "1234567890",
+                "qwertyuiop",
+                "asdfghjkl;",
+                "zxcvbnm,./"
+            ]
+        case .colemak:
+            return [
+                "1234567890",
+                "qwfpgjluy;",
+                "arstdhneio",
+                "zxcvbkm,./"
+            ]
+        case .colemak5:
+            return [
+                "neiuy",
+                "qwfpg",
+                "arstd",
+                "zxcvb"
+            ]
+        }
+    }
+}
+
 public struct GridLayout {
     public let rows: Int
     public let columns: Int
@@ -61,6 +93,15 @@ public struct GridLayout {
         self.columns = columns
         self.keymap = keymap
         self.coordinateToKey = GridLayout.inverseKeymap(keymap)
+    }
+
+    public init?(rowStrings: [String]) {
+        guard let columns = GridLayout.validate(rowStrings: rowStrings) else { return nil }
+        self.init(rows: rowStrings.count, columns: columns, keymap: GridLayout.keymap(from: rowStrings))
+    }
+
+    public init(preset: GridLayoutPreset) {
+        self.init(rowStrings: preset.rowStrings)!
     }
 
     public func coordinate(for key: Character) -> GridCoordinate? {
@@ -78,20 +119,27 @@ public struct GridLayout {
     }
 
     public static var defaultKeymap: [Character: GridCoordinate] {
-        let rows = [
-            "1234567890",
-            "qwertyuiop",
-            "asdfghjkl;",
-            "zxcvbnm,./"
-        ]
+        keymap(from: GridLayoutPreset.qwerty.rowStrings)
+    }
 
+    private static func validate(rowStrings: [String]) -> Int? {
+        guard let firstRow = rowStrings.first else { return nil }
+        let columns = firstRow.count
+        guard columns > 0 else { return nil }
+        guard rowStrings.allSatisfy({ $0.count == columns }) else { return nil }
+
+        let normalized = rowStrings.flatMap { $0.lowercased() }
+        guard Set(normalized).count == normalized.count else { return nil }
+        return columns
+    }
+
+    private static func keymap(from rowStrings: [String]) -> [Character: GridCoordinate] {
         var mapping: [Character: GridCoordinate] = [:]
-        for (rowIndex, rowString) in rows.enumerated() {
-            for (columnIndex, char) in rowString.enumerated() {
+        for (rowIndex, rowString) in rowStrings.enumerated() {
+            for (columnIndex, char) in rowString.lowercased().enumerated() {
                 mapping[char] = GridCoordinate(row: rowIndex, column: columnIndex)
             }
         }
-
         return mapping
     }
 

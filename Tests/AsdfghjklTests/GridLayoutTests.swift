@@ -43,4 +43,48 @@ final class GridLayoutTests: XCTestCase {
         XCTAssertNil(layout.label(forRow: 0, column: 20))
         XCTAssertNil(layout.label(forRow: 4, column: 0))
     }
+
+    func testColemakPresetProvidesColemakCoordinates() {
+        let layout = GridLayout(preset: .colemak)
+
+        XCTAssertEqual(layout.coordinate(for: "f"), GridCoordinate(row: 1, column: 2))
+        XCTAssertEqual(layout.coordinate(for: "d"), GridCoordinate(row: 2, column: 4))
+        XCTAssertEqual(layout.coordinate(for: "n"), GridCoordinate(row: 2, column: 6))
+    }
+
+    func testColemak5PresetProvidesFiveColumnLayout() {
+        let layout = GridLayout(preset: .colemak5)
+
+        XCTAssertEqual(layout.columns, 5)
+        XCTAssertEqual(layout.coordinate(for: "n"), GridCoordinate(row: 0, column: 0))
+        XCTAssertEqual(layout.coordinate(for: "e"), GridCoordinate(row: 0, column: 1))
+        XCTAssertEqual(layout.coordinate(for: "y"), GridCoordinate(row: 0, column: 4))
+        XCTAssertEqual(layout.coordinate(for: "q"), GridCoordinate(row: 1, column: 0))
+        XCTAssertEqual(layout.coordinate(for: "d"), GridCoordinate(row: 2, column: 4))
+        XCTAssertEqual(layout.coordinate(for: "b"), GridCoordinate(row: 3, column: 4))
+    }
+
+    func testCustomRowStringsCreateLayout() {
+        let layout = GridLayout(rowStrings: [
+            "abcdefghij",
+            "klmnopqrst",
+            "uvwxyz,./;",
+            "1234567890"
+        ])
+
+        XCTAssertEqual(layout?.coordinate(for: "a"), GridCoordinate(row: 0, column: 0))
+        XCTAssertEqual(layout?.coordinate(for: "t"), GridCoordinate(row: 1, column: 9))
+        XCTAssertEqual(layout?.coordinate(for: "0"), GridCoordinate(row: 3, column: 9))
+    }
+
+    func testCustomRowStringsRejectDuplicates() {
+        let layout = GridLayout(rowStrings: [
+            "abcdefghij",
+            "klmnopqrsa",
+            "tuvwxyz,./",
+            "1234567890"
+        ])
+
+        XCTAssertNil(layout)
+    }
 }

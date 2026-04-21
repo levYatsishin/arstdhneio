@@ -92,6 +92,26 @@ final class OverlayControllerTests: XCTestCase {
         XCTAssertEqual(secondRefinement, GridRect(x: 200, y: 37.5, width: 4, height: 6.25))
     }
 
+    func testFiveColumnLayoutsStartOnCursorScreenWithoutPartitioning() {
+        let screens = [
+            GridRect(x: 0, y: 0, width: 100, height: 100),
+            GridRect(x: 200, y: 0, width: 100, height: 100)
+        ]
+        let controller = OverlayController(
+            gridLayout: GridLayout(preset: .colemak5),
+            screenBoundsProvider: { screens },
+            cursorPositionProvider: { GridPoint(x: 250, y: 50) }
+        )
+
+        controller.start()
+
+        XCTAssertEqual(controller.targetRect, screens[1])
+
+        let refinement = controller.handleKey("o")
+
+        XCTAssertEqual(refinement, GridRect(x: 280, y: 0, width: 20, height: 25))
+    }
+
     func testFirstRefinementMovesCursor() {
         let performer = StubMouseActionPerformer()
         let controller = OverlayController(
@@ -277,7 +297,29 @@ final class OverlayControllerTests: XCTestCase {
         XCTAssertEqual(performer.movedPoints.last, GridPoint(x: 5, y: 37.5))
     }
     
-    func testGridHiddenAfterThreeRefinements() {
+    func testAutoClickAfterThirdRefinement() {
+        let performer = StubMouseActionPerformer()
+        let controller = OverlayController(
+            gridLayout: GridLayout(),
+            screenBoundsProvider: { [GridRect(x: 0, y: 0, width: 100, height: 100)] },
+            mouseActionPerformer: performer
+        )
+
+        controller.start()
+        _ = controller.handleKey("q")
+        _ = controller.handleKey("w")
+
+        XCTAssertTrue(controller.isActive, "Overlay should remain active after 2 refinements")
+        XCTAssertTrue(performer.clickedPoints.isEmpty, "Should not click before the third refinement")
+
+        let thirdRect = controller.handleKey("a")
+
+        XCTAssertEqual(thirdRect, GridRect(x: 0, y: 37.5, width: 1, height: 6.25))
+        XCTAssertFalse(controller.isActive, "Third refinement should auto-click and close the overlay")
+        XCTAssertEqual(performer.clickedPoints, [GridPoint(x: 0.5, y: 40.625)])
+    }
+    
+    func testGridVisibleUntilAutoClickThreshold() {
         let controller = OverlayController(
             gridLayout: GridLayout(),
             screenBoundsProvider: { [GridRect(x: 0, y: 0, width: 100, height: 100)] }
@@ -291,35 +333,6 @@ final class OverlayControllerTests: XCTestCase {
         
         _ = controller.handleKey("w")
         XCTAssertTrue(controller.stateSnapshot.isGridVisible, "Grid should be visible after 2 refinements")
-        
-        _ = controller.handleKey("a")
-        XCTAssertFalse(controller.stateSnapshot.isGridVisible, "Grid should be hidden after 3 refinements")
-        
-        _ = controller.handleKey("s")
-        XCTAssertFalse(controller.stateSnapshot.isGridVisible, "Grid should remain hidden after 4 refinements")
-    }
-    
-    func testGridReappearsWhenZoomingOutFromHidden() {
-        let controller = OverlayController(
-            gridLayout: GridLayout(),
-            screenBoundsProvider: { [GridRect(x: 0, y: 0, width: 100, height: 100)] }
-        )
-
-        controller.start()
-        _ = controller.handleKey("q")
-        _ = controller.handleKey("w")
-        _ = controller.handleKey("a")
-        
-        XCTAssertFalse(controller.stateSnapshot.isGridVisible, "Grid should be hidden after 3 refinements")
-        
-        _ = controller.zoomOut()
-        XCTAssertTrue(controller.stateSnapshot.isGridVisible, "Grid should reappear when zooming back to 2 refinements")
-        
-        _ = controller.zoomOut()
-        XCTAssertTrue(controller.stateSnapshot.isGridVisible, "Grid should remain visible at 1 refinement")
-        
-        _ = controller.zoomOut()
-        XCTAssertTrue(controller.stateSnapshot.isGridVisible, "Grid should remain visible at 0 refinements")
     }
     
     func testZoomOutToFullScreenRestoresBothScreens() {

@@ -8,6 +8,7 @@ public final class InputManager {
     private let overlayController: OverlayController
     private var commandRecognizer = CommandTapRecognizer()
     #if os(macOS)
+    private let commandKeyResolver: any CommandKeyResolving
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var commandKeyIsDown = false
@@ -16,7 +17,17 @@ public final class InputManager {
 
     public init(overlayController: OverlayController) {
         self.overlayController = overlayController
+        #if os(macOS)
+        self.commandKeyResolver = CommandKeyMap()
+        #endif
     }
+
+    #if os(macOS)
+    init(overlayController: OverlayController, commandKeyResolver: any CommandKeyResolving) {
+        self.overlayController = overlayController
+        self.commandKeyResolver = commandKeyResolver
+    }
+    #endif
 
     public func start() {
         #if os(macOS)
@@ -143,6 +154,12 @@ public final class InputManager {
     }
 
     #if os(macOS)
+    private enum KeyDownResolution {
+        case character(Character)
+        case consumed
+        case ignored
+    }
+
     private func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
@@ -159,24 +176,10 @@ public final class InputManager {
             }
             commandKeyIsDown = commandIsDown
         case .keyDown:
-            // Handle delete/backspace by keycode (51) since character extraction may not work reliably
             let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
-            if keyCode == 51 && overlayController.isActive {
-                let consumed = overlayController.zoomOut()
-                if consumed { return nil }
-            }
-            
-            // Handle arrow keys by keycode when overlay is active
-            if overlayController.isActive {
-                let consumed = handleArrowKey(keyCode: keyCode)
-                if consumed { return nil }
-            }
-            
-            if let character = character(from: event) {
-                let consumed = handleKeyDown(character, commandActive: commandKeyIsDown)
-                if consumed { return nil }
-            } else if commandKeyIsDown {
-                markCommandAsModifier()
+            let consumed = handleKeyCodeDown(keyCode, flags: event.flags)
+            if consumed {
+                return nil
             }
         default:
             break
@@ -184,34 +187,59 @@ public final class InputManager {
 
         return Unmanaged.passUnretained(event)
     }
-    
-    private func handleArrowKey(keyCode: Int64) -> Bool {
-        let direction: OverlayController.ArrowDirection?
-        switch keyCode {
-        case 126: // Up arrow
-            direction = .up
-        case 125: // Down arrow
-            direction = .down
-        case 123: // Left arrow
-            direction = .left
-        case 124: // Right arrow
-            direction = .right
-        default:
+
+    @discardableResult
+    func handleKeyCodeDown(_ keyCode: Int64, flags: CGEventFlags = []) -> Bool {
+        switch keyDownResolution(for: keyCode, flags: flags) {
+        case .character(let character):
+            return handleKeyDown(character, commandActive: flags.contains(.maskCommand))
+        case .consumed:
+            return true
+        case .ignored:
+            if flags.contains(.maskCommand) {
+                markCommandAsModifier()
+            }
             return false
         }
-        
-        if let dir = direction {
-            return overlayController.moveSelection(dir)
+    }
+    
+    private func keyDownResolution(for keyCode: Int64, flags: CGEventFlags) -> KeyDownResolution {
+        switch keyCode {
+        case 51:
+            return .character("\u{7f}")
+        case 49:
+            return .character(" ")
+        case 53:
+            return .character("\u{1b}")
+        default:
+            break
         }
-        return false
+
+        if let direction = arrowDirection(for: keyCode), overlayController.isActive {
+            return overlayController.moveSelection(direction) ? .consumed : .ignored
+        }
+
+        let shiftIsDown = flags.contains(.maskShift)
+        if let printable = commandKeyResolver.printableCharacter(for: keyCode, shift: shiftIsDown) {
+            return .character(printable)
+        }
+
+        return .ignored
     }
 
-    private func character(from event: CGEvent) -> Character? {
-        var length: Int = 0
-        var buffer = [UniChar](repeating: 0, count: 4)
-        event.keyboardGetUnicodeString(maxStringLength: buffer.count, actualStringLength: &length, unicodeString: &buffer)
-        guard length > 0 else { return nil }
-        return Character(String(utf16CodeUnits: buffer, count: length))
+    private func arrowDirection(for keyCode: Int64) -> OverlayController.ArrowDirection? {
+        switch keyCode {
+        case 126: // Up arrow
+            return .up
+        case 125: // Down arrow
+            return .down
+        case 123: // Left arrow
+            return .left
+        case 124: // Right arrow
+            return .right
+        default:
+            return nil
+        }
     }
 
     @MainActor

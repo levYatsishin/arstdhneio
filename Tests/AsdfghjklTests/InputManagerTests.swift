@@ -179,6 +179,22 @@ final class InputManagerTests: XCTestCase {
         
         XCTAssertFalse(consumed)
     }
+
+    #if os(macOS)
+    func testKeyCodeUsesCommandEquivalentResolver() {
+        let controller = OverlayController(screenBoundsProvider: { [GridRect(x: 0, y: 0, width: 100, height: 100)] })
+        let manager = InputManager(
+            overlayController: controller,
+            commandKeyResolver: StubCommandKeyResolver(printableCharacter: "n")
+        )
+
+        controller.start()
+        let consumed = manager.handleKeyCodeDown(4)
+
+        XCTAssertTrue(consumed)
+        XCTAssertEqual(controller.targetRect, GridRect(x: 50, y: 50, width: 10, height: 25))
+    }
+    #endif
 }
 
 private final class StubMouseActionPerformer: MouseActionPerforming {
@@ -203,3 +219,13 @@ private final class StubMouseActionPerformer: MouseActionPerforming {
         rightClickedPoints.append(point)
     }
 }
+
+#if os(macOS)
+private struct StubCommandKeyResolver: CommandKeyResolving {
+    let printableCharacter: Character?
+
+    func printableCharacter(for keyCode: Int64, shift: Bool) -> Character? {
+        printableCharacter
+    }
+}
+#endif
