@@ -22,6 +22,9 @@ Since upstream commit [`1daed86`](https://github.com/dave1010/Asdfghjkl/commit/1
 - Built-in `colemak` and `colemak5` presets.
 - Custom grid-row definitions for both 4x10 and 4x5 layouts.
 - Multi-display handling that keeps 5-column layouts intact on the screen under the mouse cursor instead of splitting them across displays.
+- App-bundle packaging scripts and install targets for building `arstdhneio.app`.
+- A menu-bar Launch at Login toggle backed by macOS `SMAppService` when the bundled app is installed and launched as `arstdhneio.app`.
+- A menu-bar Configuration window backed by `UserDefaults`, so layout presets and custom rows can be managed in-app instead of only through launch flags.
 - Additional tests covering command-layer translation, configurable layouts, partitioning rules, and overlay navigation behavior.
 
 ![banner](banner.jpg)
@@ -62,12 +65,15 @@ Mice are slow and a long way away from the keyboard.
 
 ## Download & Install
 
-1. Download the latest `arstdhneio` binary from the [GitHub releases page](https://github.com/levYatsishin/arstdhneio/releases).
-2. Remove the quarantine attribute since the binary is currently unsigned:
+1. Download the latest `arstdhneio.app.zip` archive from the [GitHub releases page](https://github.com/levYatsishin/arstdhneio/releases).
+2. Unzip it and move `arstdhneio.app` into `/Applications` or `~/Applications`.
+3. Remove the quarantine attribute since the app bundle is currently unsigned:
    ```sh
-   xattr -c arstdhneio
+   xattr -cr /Applications/arstdhneio.app
    ```
-3. Grant the required macOS permissions (Input Monitoring and Accessibility) when prompted so the app can create its global event tap.
+4. Launch `arstdhneio.app`.
+5. Grant the required macOS permissions (Input Monitoring and Accessibility) when prompted so the app can create its global event tap.
+6. If you want it to start automatically after login, open the menu bar item and enable `Launch at Login`.
 
 ## How does it work?
 
@@ -88,6 +94,14 @@ The macOS app installs the global CGEvent tap on launch (requires Input Monitori
 Accessibility permissions) and rebuilds overlay windows whenever displays change, keeping a
 window on every attached screen. Quit the app to tear down the tap cleanly.
 
+The Launch at Login toggle is only available from the bundled `arstdhneio.app`. If you run the
+raw executable with `swift run` or from `.build/debug`, the menu item stays disabled because
+`SMAppService.mainApp` only applies to the app bundle.
+
+The menu bar also exposes `Configuration...`, which lets you change the saved layout preset or
+custom rows. Those settings are persisted in `UserDefaults`. If you launch the app with
+`--grid-keymap` or `--grid-key-rows`, those launch-time overrides still win for that session.
+
 Printable bindings are resolved from the current keyboard layout's Command-equivalent translation
 rather than the plain typed character, matching the same character mapping macOS uses for
 shortcuts and custom layouts that provide a dedicated Command layer.
@@ -96,11 +110,12 @@ On first launch, macOS may block the event tap unless the app is allowed under *
 
 ## Development
 
-`arstdhneio` is built with Swift 6.2 and targets macOS 14+.
+`arstdhneio` is built with Swift 6.2+ and targets macOS 13+.
 
 ### Grid layout parameters
 
-You can choose a different overlay key layout at launch time:
+You can choose a different overlay key layout either from the menu bar `Configuration...` window
+or at launch time:
 
 ```sh
 swift run arstdhneio --grid-keymap colemak5
@@ -146,17 +161,45 @@ ARSTDHNEIO_GRID_KEY_ROWS="1234567890,qwfpgjluy;,arstdhneio,zxcvbkm,./"
 Custom rows must contain four comma-separated rows with the same width and no duplicate
 characters across the whole grid.
 
+If you save a layout from the configuration window, the app reuses it on the next launch. Launch
+arguments and environment variables temporarily override the saved value without deleting it.
+
 You can build and run `arstdhneio` with the provided `Makefile`:
 
 ```sh
-make build   # swift build + direct swiftc compile for quick iteration
-make test    # runs the GridLayout and overlay state tests
-make run     # runs the executable from .build/debug
+make build        # swift build
+make test         # runs the package test suite
+make run          # runs the executable from .build/debug
+make app          # builds dist/arstdhneio.app
+make install-app  # installs the app bundle into ~/Applications
+make open-app     # opens dist/arstdhneio.app
+```
+
+If you want the real menu-bar app flow during development, use:
+
+```sh
+make app
+make open-app
+```
+
+or install it into `~/Applications`:
+
+```sh
+make install-app
+open ~/Applications/arstdhneio.app
+```
+
+If your shell still resolves `swift` to an older toolchain, every `make` target also accepts a
+`SWIFT=...` override:
+
+```sh
+SWIFT="$HOME/.swiftly/bin/swift" make test
+SWIFT="$HOME/.swiftly/bin/swift" make app
 ```
 
 ### Continuous integration
 
-GitHub Actions keep the package healthy and provide a downloadable binary:
+GitHub Actions keep the package healthy and provide a downloadable app bundle:
 
 * `Test` runs on pushes to `main` and all pull requests, setting up Swift 6.2 on macOS and executing `swift test --parallel`.
-* `macOS Binary` is a manually triggered workflow that builds the `arstdhneio` release product on macOS, captures the release bin path with `swift build --configuration release --show-bin-path`, lists the contents of that directory for debugging, and uploads the resulting executable as an artifact.
+* `macOS App` is a manually triggered workflow that builds `dist/arstdhneio.app`, zips the bundle, and uploads that archive as an artifact.

@@ -20,22 +20,18 @@ jobs:
         with:
           swift-version: "6.2"
 
-      - name: Build release artifact
+      - name: Build app bundle
         run: |
-          swift build --configuration release --product arstdhneio
-          BIN_PATH=$(swift build --configuration release --show-bin-path)
-          echo "BIN_PATH=$BIN_PATH" >> "$GITHUB_ENV"
+          APP_VERSION="${GITHUB_REF_NAME#v}" APP_BUILD="${GITHUB_RUN_NUMBER}" ./scripts/build-app.sh
 
-      - name: Package binary
+      - name: Package app bundle
         run: |
-          cd "$BIN_PATH"
-          zip arstdhneio-macos.zip arstdhneio
-          mv arstdhneio-macos.zip $GITHUB_WORKSPACE/
+          ditto -c -k --sequesterRsrc --keepParent dist/arstdhneio.app arstdhneio-macos-app.zip
 
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
-          files: arstdhneio-macos.zip
+          files: arstdhneio-macos-app.zip
           draft: false
           prerelease: false
           generate_release_notes: true

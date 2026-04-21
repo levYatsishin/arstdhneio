@@ -26,6 +26,11 @@ let package = Package(
             name: "arstdhneioTests",
             dependencies: ["arstdhneioCore"],
             path: "Tests/AsdfghjklTests"
+        ),
+        .testTarget(
+            name: "arstdhneioAppTests",
+            dependencies: ["arstdhneio"],
+            path: "Tests/arstdhneioAppTests"
         )
     ]
 )

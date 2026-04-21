@@ -1,11 +1,11 @@
-name: macOS Binary
+name: macOS App
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    name: Build release binary
+    name: Build app bundle
     runs-on: macos-15
     steps:
       - name: Check out repository
@@ -16,21 +16,19 @@ jobs:
         with:
           swift-version: "6.2"
 
-      - name: Build release artifact
+      - name: Build app bundle
         run: |
-          swift build --configuration release --product arstdhneio
-          BIN_PATH=$(swift build --configuration release --show-bin-path)
-          echo "BIN_PATH=$BIN_PATH" >> "$GITHUB_ENV"
+          APP_BUILD="${GITHUB_RUN_NUMBER}" ./scripts/build-app.sh
+          ls -la dist
+          find dist -maxdepth 3 -print
 
-      - name: Show build output
+      - name: Zip app bundle
         run: |
-          echo "BIN_PATH=$BIN_PATH"
-          ls -la "$BIN_PATH"
-          find "$BIN_PATH" -maxdepth 1 -type f -print
+          ditto -c -k --sequesterRsrc --keepParent dist/arstdhneio.app arstdhneio-macos-app.zip
 
-      - name: Upload binary
+      - name: Upload app bundle
         uses: actions/upload-artifact@v4
         with:
-          name: arstdhneio-macos-binary
-          path: ${{ env.BIN_PATH }}/arstdhneio
+          name: arstdhneio-macos-app
+          path: arstdhneio-macos-app.zip
           if-no-files-found: error

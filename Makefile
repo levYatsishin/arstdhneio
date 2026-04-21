@@ -1,14 +1,16 @@
-.PHONY: build test run clean
+.PHONY: build build-prod test run run-prod app install-app open-app clean
+
+SWIFT ?= swift
 
 build:
-	swift build
+	$(SWIFT) build
 	@echo "Executable built at .build/debug/arstdhneio"
 
 build-prod:
-	swift build --configuration release --product arstdhneio
+	$(SWIFT) build --configuration release --product arstdhneio
 
 test:
-	swift test --parallel
+	$(SWIFT) test --parallel
 
 run: build
 	.build/debug/arstdhneio
@@ -16,5 +18,14 @@ run: build
 run-prod: build-prod
 	.build/release/arstdhneio
 
+app:
+	./scripts/build-app.sh
+
+install-app: app
+	./scripts/install-app.sh
+
+open-app: app
+	open dist/arstdhneio.app
+
 clean:
-	swift package clean
+	$(SWIFT) package clean

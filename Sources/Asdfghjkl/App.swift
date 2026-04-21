@@ -71,44 +71,27 @@ struct arstdhneioApp: App {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let overlayVisualModel = OverlayVisualModel()
-    private let appConfiguration = AppConfiguration.load()
-    private lazy var gridLayout = appConfiguration.gridLayout
+    private let settingsStore = StoredAppSettingsStore()
+    private let launchAtLoginManager = LaunchAtLoginManager()
+    private var appConfiguration = AppConfiguration.load()
+    private var currentSettings = StoredAppSettings.default
+    private var currentGridLayout = arstdhneioCore.GridLayout()
     private var overlayController: OverlayController!
     private var inputManager: InputManager!
     private var overlayWindows: [OverlayWindowController] = []
     private var screenRects: [GridRect] = [.defaultScreen]
     private var screenObserver: NSObjectProtocol?
     private var statusItem: NSStatusItem?
+    private var launchAtLoginMenuItem: NSMenuItem?
+    private var aboutWindow: NSWindow?
+    private var configurationWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        currentSettings = appConfiguration.storedSettings
+        currentGridLayout = appConfiguration.gridLayout
         setupMenuBar()
-        
-        overlayController = OverlayController(
-            gridLayout: gridLayout,
-            screenBoundsProvider: { [weak self] in
-                guard let self else { return [.defaultScreen] }
-                return self.screenRects
-            },
-            cursorPositionProvider: {
-                guard let mouseLocation = CGEvent(source: nil)?.location else { return nil }
-                return GridPoint(x: mouseLocation.x, y: mouseLocation.y)
-            }
-        )
-
-        overlayController.stateDidChange = { [weak self] state in
-            Task { @MainActor in
-                self?.handleStateChange(state)
-            }
-        }
-
-        inputManager = InputManager(overlayController: overlayController)
-        inputManager.onToggle = { [weak self] in
-            Task { @MainActor in
-                self?.rebuildOverlayWindows()
-            }
-        }
 
         screenObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
@@ -120,8 +103,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        rebuildOverlayWindows()
-        inputManager.start()
+        configureRuntime(with: appConfiguration.gridLayout)
     }
     
     private func setupMenuBar() {
@@ -132,38 +114,131 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         
         let menu = NSMenu()
+        menu.delegate = self
         
-        menu.addItem(NSMenuItem(
+        let aboutMenuItem = NSMenuItem(
             title: "About arstdhneio",
             action: #selector(showAbout),
             keyEquivalent: ""
-        ))
+        )
+        aboutMenuItem.target = self
+        menu.addItem(aboutMenuItem)
+
+        let configurationMenuItem = NSMenuItem(
+            title: "Configuration...",
+            action: #selector(showConfiguration),
+            keyEquivalent: ","
+        )
+        configurationMenuItem.target = self
+        menu.addItem(configurationMenuItem)
+
+        let launchAtLoginMenuItem = NSMenuItem(
+            title: "Launch at Login",
+            action: #selector(toggleLaunchAtLogin),
+            keyEquivalent: ""
+        )
+        launchAtLoginMenuItem.target = self
+        menu.addItem(launchAtLoginMenuItem)
+        self.launchAtLoginMenuItem = launchAtLoginMenuItem
         
         menu.addItem(NSMenuItem.separator())
         
-        menu.addItem(NSMenuItem(
+        let quitMenuItem = NSMenuItem(
             title: "Quit",
             action: #selector(quitApp),
             keyEquivalent: "q"
-        ))
+        )
+        quitMenuItem.target = self
+        menu.addItem(quitMenuItem)
         
         statusItem?.menu = menu
+        refreshLaunchAtLoginMenuItem()
+    }
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        refreshLaunchAtLoginMenuItem()
+    }
+
+    private func refreshLaunchAtLoginMenuItem() {
+        guard let launchAtLoginMenuItem else { return }
+
+        switch launchAtLoginManager.status {
+        case .unavailable:
+            launchAtLoginMenuItem.title = "Launch at Login (requires arstdhneio.app)"
+            launchAtLoginMenuItem.state = .off
+            launchAtLoginMenuItem.isEnabled = false
+        case .enabled:
+            launchAtLoginMenuItem.title = "Launch at Login"
+            launchAtLoginMenuItem.state = .on
+            launchAtLoginMenuItem.isEnabled = true
+        case .requiresApproval:
+            launchAtLoginMenuItem.title = "Launch at Login (approve in Settings)"
+            launchAtLoginMenuItem.state = .on
+            launchAtLoginMenuItem.isEnabled = true
+        case .notRegistered, .notFound:
+            launchAtLoginMenuItem.title = "Launch at Login"
+            launchAtLoginMenuItem.state = .off
+            launchAtLoginMenuItem.isEnabled = true
+        }
     }
     
     @objc private func showAbout() {
-        let aboutWindow = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 500, height: 450),
-            styleMask: [.titled, .closable],
-            backing: .buffered,
-            defer: false
+        if aboutWindow == nil {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 500, height: 450),
+                styleMask: [.titled, .closable],
+                backing: .buffered,
+                defer: false
+            )
+            window.title = "About arstdhneio"
+            window.isReleasedWhenClosed = false
+            window.contentView = NSHostingView(rootView: AboutView())
+            aboutWindow = window
+        }
+
+        aboutWindow?.center()
+        aboutWindow?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc private func showConfiguration() {
+        if configurationWindow == nil {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 520, height: 420),
+                styleMask: [.titled, .closable],
+                backing: .buffered,
+                defer: false
+            )
+            window.title = "Configuration"
+            window.isReleasedWhenClosed = false
+            configurationWindow = window
+        }
+
+        configurationWindow?.contentView = NSHostingView(
+            rootView: ConfigurationView(
+                settings: currentSettings,
+                usesLaunchOverrides: appConfiguration.usesLaunchOverrides,
+                onSave: { [weak self] settings in
+                    self?.saveConfiguration(settings)
+                },
+                onReset: { [weak self] in
+                    self?.resetConfiguration()
+                }
+            )
         )
-        aboutWindow.title = "About arstdhneio"
-        aboutWindow.isReleasedWhenClosed = false
-        aboutWindow.center()
-        
-        let contentView = NSHostingView(rootView: AboutView())
-        aboutWindow.contentView = contentView
-        aboutWindow.makeKeyAndOrderFront(nil)
+        configurationWindow?.center()
+        configurationWindow?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc private func toggleLaunchAtLogin() {
+        do {
+            _ = try launchAtLoginManager.toggle()
+            refreshLaunchAtLoginMenuItem()
+        } catch {
+            refreshLaunchAtLoginMenuItem()
+            presentLaunchAtLoginError(error)
+        }
     }
     
     @objc private func quitApp() {
@@ -195,8 +270,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlayWindows.forEach { $0.hide() }
         let screens = NSScreen.screens
         screenRects = screens.map { gridRect(for: $0) }
-        let slices = GridPartitioner.slices(for: screenRects, layout: gridLayout)
-        let gridSlices = slices.isEmpty ? GridPartitioner.slices(for: [.defaultScreen], layout: gridLayout) : slices
+        let slices = GridPartitioner.slices(for: screenRects, layout: currentGridLayout)
+        let gridSlices = slices.isEmpty ? GridPartitioner.slices(for: [.defaultScreen], layout: currentGridLayout) : slices
 
         overlayWindows = zip(screens, gridSlices).map {
             OverlayWindowController(
@@ -218,6 +293,64 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func gridRect(for screen: NSScreen) -> GridRect {
         let frame = screen.frame
         return GridRect(x: frame.origin.x, y: frame.origin.y, width: frame.width, height: frame.height)
+    }
+
+    private func presentLaunchAtLoginError(_ error: Error) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Unable to update Launch at Login"
+        alert.informativeText = [error.localizedDescription, (error as? LocalizedError)?.recoverySuggestion]
+            .compactMap { $0 }
+            .joined(separator: "\n\n")
+        alert.runModal()
+    }
+
+    private func configureRuntime(with gridLayout: arstdhneioCore.GridLayout) {
+        currentGridLayout = gridLayout
+        inputManager?.stop()
+        overlayWindows.forEach { $0.hide() }
+
+        overlayController = OverlayController(
+            gridLayout: gridLayout,
+            screenBoundsProvider: { [weak self] in
+                guard let self else { return [.defaultScreen] }
+                return self.screenRects
+            },
+            cursorPositionProvider: {
+                guard let mouseLocation = CGEvent(source: nil)?.location else { return nil }
+                return GridPoint(x: mouseLocation.x, y: mouseLocation.y)
+            }
+        )
+
+        overlayController.stateDidChange = { [weak self] state in
+            Task { @MainActor in
+                self?.handleStateChange(state)
+            }
+        }
+
+        inputManager = InputManager(overlayController: overlayController)
+        inputManager.onToggle = { [weak self] in
+            Task { @MainActor in
+                self?.rebuildOverlayWindows()
+            }
+        }
+
+        rebuildOverlayWindows()
+        inputManager.start()
+    }
+
+    private func saveConfiguration(_ settings: StoredAppSettings) {
+        currentSettings = settings
+        settingsStore.save(settings)
+
+        if !appConfiguration.usesLaunchOverrides, let layout = settings.gridLayout() {
+            appConfiguration = AppConfiguration(gridLayout: layout, storedSettings: settings, usesLaunchOverrides: false)
+            configureRuntime(with: layout)
+        }
+    }
+
+    private func resetConfiguration() {
+        saveConfiguration(.default)
     }
 }
 #else
