@@ -22,20 +22,20 @@ jobs:
 
       - name: Build release artifact
         run: |
-          swift build --configuration release --product Asdfghjkl
+          swift build --configuration release --product arstdhneio
           BIN_PATH=$(swift build --configuration release --show-bin-path)
           echo "BIN_PATH=$BIN_PATH" >> "$GITHUB_ENV"
 
       - name: Package binary
         run: |
           cd "$BIN_PATH"
-          zip Asdfghjkl-macos.zip Asdfghjkl
-          mv Asdfghjkl-macos.zip $GITHUB_WORKSPACE/
+          zip arstdhneio-macos.zip arstdhneio
+          mv arstdhneio-macos.zip $GITHUB_WORKSPACE/
 
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
-          files: Asdfghjkl-macos.zip
+          files: arstdhneio-macos.zip
           draft: false
           prerelease: false
           generate_release_notes: true

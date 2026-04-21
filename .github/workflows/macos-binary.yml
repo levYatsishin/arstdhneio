@@ -18,7 +18,7 @@ jobs:
 
       - name: Build release artifact
         run: |
-          swift build --configuration release --product Asdfghjkl
+          swift build --configuration release --product arstdhneio
           BIN_PATH=$(swift build --configuration release --show-bin-path)
           echo "BIN_PATH=$BIN_PATH" >> "$GITHUB_ENV"
 
@@ -31,6 +31,6 @@ jobs:
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
-          name: Asdfghjkl-macos-binary
-          path: ${{ env.BIN_PATH }}/Asdfghjkl
+          name: arstdhneio-macos-binary
+          path: ${{ env.BIN_PATH }}/arstdhneio
           if-no-files-found: error

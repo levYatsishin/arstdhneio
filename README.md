@@ -1,6 +1,8 @@
-# Asdfghjkl
+# arstdhneio
 
-> **The Mouse is Dead. Use _Asdfghjkl_ instead.**
+> This fork was created with LLM assistance because I wanted these input and layout features for real use, fast. It is maintained in a practical, functionality-first way. If it is useful to you, feel free to use it, open issues, or send pull requests.
+
+> **A practical fork of _Asdfghjkl_.**
 
 Named after the [Deadmau5 song Asdfghjkl](https://www.youtube.com/watch?v=1aP910O2774)
 
@@ -24,12 +26,6 @@ Since upstream commit [`1daed86`](https://github.com/dave1010/Asdfghjkl/commit/1
 - Additional tests covering command-layer translation, configurable layouts, partitioning rules, and the auto-click behavior.
 - Documentation updates for the fork-specific behavior and `.DS_Store` ignore housekeeping.
 
-## Disclaimer
-
-This fork was developed with LLM assistance because I wanted these input and layout features for
-real daily use, quickly. It is maintained in a practical, functionality-first way. If it is
-useful to you, feel free to use it, open issues, or send pull requests.
-
 ![banner](banner.jpg)
 
 ## What does it do?
@@ -37,12 +33,12 @@ useful to you, feel free to use it, open issues, or send pull requests.
 1. Double tap `Cmd` to see a keyboard grid on your screen.
 2. Tap a corresponding key to move the mouse to that area.
 3. Tap again (and again) to drill down.
-4. After the third refinement, Asdfghjkl automatically left-clicks the final target.
+4. After the third refinement, arstdhneio automatically left-clicks the final target.
 
 You can still tap `Space` earlier to click before reaching the auto-click depth.
 
 The overlay resolves printable bindings through the current macOS layout's Command-equivalent
-mapping, so layouts that expose stable shortcut characters under `Cmd` keep the same Asdfghjkl
+mapping, so layouts that expose stable shortcut characters under `Cmd` keep the same arstdhneio
 bindings even when their normal typing layer changes.
 
 You can also:
@@ -70,10 +66,10 @@ Mice are slow and a long way away from the keyboard.
 
 ## Download & Install
 
-1. Download the latest `Asdfghjkl` binary from the [GitHub releases page](https://github.com/dave1010/Asdfghjkl/releases).
+1. Download the latest `arstdhneio` binary from the [GitHub releases page](https://github.com/levYatsishin/arstdhneio/releases).
 2. Remove the quarantine attribute since the binary is currently unsigned:
    ```sh
-   xattr -c Asdfghjkl
+   xattr -c arstdhneio
    ```
 3. Grant the required macOS permissions (Input Monitoring and Accessibility) when prompted so the app can create its global event tap.
 
@@ -104,14 +100,14 @@ On first launch, macOS may block the event tap unless the app is allowed under *
 
 ## Development
 
-`Asdfghjkl` is built with Swift 6.2 and targets macOS 14+.
+`arstdhneio` is built with Swift 6.2 and targets macOS 14+.
 
 ### Grid layout parameters
 
 You can choose a different overlay key layout at launch time:
 
 ```sh
-swift run Asdfghjkl --grid-keymap colemak5
+swift run arstdhneio --grid-keymap colemak5
 ```
 
 Available presets:
@@ -135,26 +131,26 @@ of being split across displays.
 For custom variants, you can provide all four 10-key rows directly:
 
 ```sh
-swift run Asdfghjkl --grid-key-rows "1234567890,qwfpgjluy;,arstdhneio,zxcvbkm,./"
+swift run arstdhneio --grid-key-rows "1234567890,qwfpgjluy;,arstdhneio,zxcvbkm,./"
 ```
 
 or four 5-key rows if you want a 4×5 grid:
 
 ```sh
-swift run Asdfghjkl --grid-key-rows "neiuy,qwfpg,arstd,zxcvb"
+swift run arstdhneio --grid-key-rows "neiuy,qwfpg,arstd,zxcvb"
 ```
 
 The same options can also be provided via environment variables:
 
 ```sh
-ASDFGHJKL_GRID_KEYMAP=colemak5
-ASDFGHJKL_GRID_KEY_ROWS="1234567890,qwfpgjluy;,arstdhneio,zxcvbkm,./"
+ARSTDHNEIO_GRID_KEYMAP=colemak5
+ARSTDHNEIO_GRID_KEY_ROWS="1234567890,qwfpgjluy;,arstdhneio,zxcvbkm,./"
 ```
 
 Custom rows must contain four comma-separated rows with the same width and no duplicate
 characters across the whole grid.
 
-You can build and run `Asdfghjkl` with the provided `Makefile`:
+You can build and run `arstdhneio` with the provided `Makefile`:
 
 ```sh
 make build   # swift build + direct swiftc compile for quick iteration
@@ -167,4 +163,4 @@ make run     # runs the executable from .build/debug
 GitHub Actions keep the package healthy and provide a downloadable binary:
 
 * `Test` runs on pushes to `main` and all pull requests, setting up Swift 6.2 on macOS and executing `swift test --parallel`.
-* `macOS Binary` is a manually triggered workflow that builds the `Asdfghjkl` release product on macOS, captures the release bin path with `swift build --configuration release --show-bin-path`, lists the contents of that directory for debugging, and uploads the resulting executable as an artifact.
+* `macOS Binary` is a manually triggered workflow that builds the `arstdhneio` release product on macOS, captures the release bin path with `swift build --configuration release --show-bin-path`, lists the contents of that directory for debugging, and uploads the resulting executable as an artifact.

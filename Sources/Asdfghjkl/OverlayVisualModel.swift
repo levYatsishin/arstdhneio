@@ -1,7 +1,7 @@
 import Foundation
 #if os(macOS)
 import Combine
-import AsdfghjklCore
+import arstdhneioCore
 
 /// Bridges OverlayState to SwiftUI's ObservableObject for reactive UI updates.
 @MainActor

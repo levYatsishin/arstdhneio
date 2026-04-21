@@ -4,25 +4,28 @@
 import PackageDescription
 
 let package = Package(
-    name: "Asdfghjkl",
+    name: "arstdhneio",
     platforms: [
         .macOS(.v13)
     ],
     products: [
-        .executable(name: "Asdfghjkl", targets: ["Asdfghjkl"]),
-        .library(name: "AsdfghjklCore", targets: ["AsdfghjklCore"])
+        .executable(name: "arstdhneio", targets: ["arstdhneio"]),
+        .library(name: "arstdhneioCore", targets: ["arstdhneioCore"])
     ],
     targets: [
         .target(
-            name: "AsdfghjklCore"
+            name: "arstdhneioCore",
+            path: "Sources/AsdfghjklCore"
         ),
         .executableTarget(
-            name: "Asdfghjkl",
-            dependencies: ["AsdfghjklCore"]
+            name: "arstdhneio",
+            dependencies: ["arstdhneioCore"],
+            path: "Sources/Asdfghjkl"
         ),
         .testTarget(
-            name: "AsdfghjklTests",
-            dependencies: ["AsdfghjklCore"]
+            name: "arstdhneioTests",
+            dependencies: ["arstdhneioCore"],
+            path: "Tests/AsdfghjklTests"
         )
     ]
 )

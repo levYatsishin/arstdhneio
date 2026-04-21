@@ -1,7 +1,7 @@
 import XCTest
 #if os(macOS)
 import Carbon
-@testable import AsdfghjklCore
+@testable import arstdhneioCore
 
 final class CommandKeyMapTests: XCTestCase {
     func testModifierStateAlwaysIncludesCommand() {

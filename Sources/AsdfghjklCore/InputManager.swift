@@ -246,7 +246,7 @@ public final class InputManager {
     private static func presentMissingPermissionsAlert() {
         let alert = NSAlert()
         alert.messageText = "Enable Input Monitoring and Accessibility"
-        alert.informativeText = "Asdfghjkl needs Input Monitoring and Accessibility permissions to listen for the Cmd double-tap. Open System Settings > Privacy & Security, add Asdfghjkl under each section, then restart the app."
+        alert.informativeText = "arstdhneio needs Input Monitoring and Accessibility permissions to listen for the Cmd double-tap. Open System Settings > Privacy & Security, add arstdhneio under each section, then restart the app."
         alert.addButton(withTitle: "Open Input Monitoring")
         alert.addButton(withTitle: "OK")
 

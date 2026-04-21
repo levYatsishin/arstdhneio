@@ -2,7 +2,7 @@ import Foundation
 #if os(macOS)
 import SwiftUI
 import AppKit
-import AsdfghjklCore
+import arstdhneioCore
 
 @MainActor
 final class OverlayWindowController {

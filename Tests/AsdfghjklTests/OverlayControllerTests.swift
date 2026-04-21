@@ -1,5 +1,5 @@
 import XCTest
-@testable import AsdfghjklCore
+@testable import arstdhneioCore
 
 final class OverlayControllerTests: XCTestCase {
     func testStartResetsToScreenBounds() {

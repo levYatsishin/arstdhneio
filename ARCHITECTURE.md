@@ -1,10 +1,10 @@
-# Asdfghjkl Architecture
+# arstdhneio Architecture
 
 ## Overview
-Asdfghjkl is a macOS utility that replaces mouse navigation with a keyboard-driven overlay. A global event tap detects a double-tap of the Command key to toggle the overlay, keys refine a 4×10 grid that maps to the screen while warping the cursor to the refined centre, and the third refinement automatically left-clicks the final target unless you click earlier with Space. The package is split into a reusable core library and a macOS app target that hosts SwiftUI/AppKit windows for the overlay and zoom preview.
+arstdhneio is a macOS utility that replaces mouse navigation with a keyboard-driven overlay. A global event tap detects a double-tap of the Command key to toggle the overlay, keys refine a 4×10 grid that maps to the screen while warping the cursor to the refined centre, and the third refinement automatically left-clicks the final target unless you click earlier with Space. The package is split into a reusable core library and a macOS app target that hosts SwiftUI/AppKit windows for the overlay and zoom preview.
 
 ## Package layout
-The Swift package exposes a platform-neutral `AsdfghjklCore` library alongside the `Asdfghjkl` executable target. Core contains the state machine, grid math, input handling, and mouse action abstractions, while the executable hosts the SwiftUI/AppKit presentation that subscribes to core state and renders overlay windows on every screen. Tests target the core library directly to keep UI concerns separate.
+The Swift package exposes a platform-neutral `arstdhneioCore` library alongside the `arstdhneio` executable target. Core contains the state machine, grid math, input handling, and mouse action abstractions, while the executable hosts the SwiftUI/AppKit presentation that subscribes to core state and renders overlay windows on every screen. Tests target the core library directly to keep UI concerns separate.
 
 ## Core layer
 - **Grid navigation**: `GridLayout` maps keyboard characters onto a 4×10 grid and returns the subdivided rectangle for each key, enabling iterative refinement of the target region. `GridRect` provides geometric utilities including `center` for the midpoint, while `GridPartitioner` splits the columns across multiple displays so the first keypress selects the correct screen before drilling into that display.

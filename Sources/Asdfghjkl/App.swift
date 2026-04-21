@@ -1,18 +1,18 @@
 #if os(macOS)
 import SwiftUI
 import AppKit
-import AsdfghjklCore
+import arstdhneioCore
 
 struct AboutView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Asdfghjkl")
+                Text("arstdhneio")
                     .font(.largeTitle)
                     .bold()
                     .frame(maxWidth: .infinity, alignment: .center)
                 
-                Text("The Mouse is Dead. Use Asdfghjkl instead.")
+                Text("A practical fork of Asdfghjkl.")
                     .font(.headline)
                     .italic()
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -42,13 +42,13 @@ struct AboutView: View {
                 }
                 .padding(.vertical, 4)
                 
-                Link("GitHub: dave1010/Asdfghjkl", 
-                     destination: URL(string: "https://github.com/dave1010/Asdfghjkl")!)
+                Link("GitHub: levYatsishin/arstdhneio",
+                     destination: URL(string: "https://github.com/levYatsishin/arstdhneio")!)
                     .font(.body)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.top, 8)
                 
-                Text("© Dave Hulbert")
+                Text("Derived from Dave Hulbert's Asdfghjkl")
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -61,7 +61,7 @@ struct AboutView: View {
 }
 
 @main
-struct AsdfghjklApp: App {
+struct arstdhneioApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
@@ -135,7 +135,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         
         menu.addItem(NSMenuItem(
-            title: "About Asdfghjkl",
+            title: "About arstdhneio",
             action: #selector(showAbout),
             keyEquivalent: ""
         ))
@@ -158,7 +158,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             backing: .buffered,
             defer: false
         )
-        aboutWindow.title = "About Asdfghjkl"
+        aboutWindow.title = "About arstdhneio"
         aboutWindow.isReleasedWhenClosed = false
         aboutWindow.center()
         
@@ -223,10 +223,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 #else
 import Foundation
-import AsdfghjklCore
+import arstdhneioCore
 
 @main
-struct AsdfghjklApp {
+struct arstdhneioApp {
     static func main() {
         let overlayController = OverlayController()
         let inputManager = InputManager(overlayController: overlayController)

@@ -2,19 +2,19 @@
 
 build:
 	swift build
-	@echo "Executable built at .build/debug/Asdfghjkl"
+	@echo "Executable built at .build/debug/arstdhneio"
 
 build-prod:
-	swift build --configuration release --product Asdfghjkl
+	swift build --configuration release --product arstdhneio
 
 test:
 	swift test --parallel
 
 run: build
-	.build/debug/Asdfghjkl
+	.build/debug/arstdhneio
 
 run-prod: build-prod
-	.build/release/Asdfghjkl
+	.build/release/arstdhneio
 
 clean:
 	swift package clean

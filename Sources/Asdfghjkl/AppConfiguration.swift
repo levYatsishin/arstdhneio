@@ -1,13 +1,13 @@
 #if os(macOS)
 import Foundation
-import AsdfghjklCore
+import arstdhneioCore
 
 struct AppConfiguration {
     let gridLayout: GridLayout
 
     static func load(arguments: [String] = CommandLine.arguments, environment: [String: String] = ProcessInfo.processInfo.environment) -> AppConfiguration {
-        let layoutArgument = argumentValue(named: "--grid-keymap", in: arguments) ?? environment["ASDFGHJKL_GRID_KEYMAP"]
-        let rowsArgument = argumentValue(named: "--grid-key-rows", in: arguments) ?? environment["ASDFGHJKL_GRID_KEY_ROWS"]
+        let layoutArgument = argumentValue(named: "--grid-keymap", in: arguments) ?? environment["ARSTDHNEIO_GRID_KEYMAP"] ?? environment["ASDFGHJKL_GRID_KEYMAP"]
+        let rowsArgument = argumentValue(named: "--grid-key-rows", in: arguments) ?? environment["ARSTDHNEIO_GRID_KEY_ROWS"] ?? environment["ASDFGHJKL_GRID_KEY_ROWS"]
 
         if let rowsArgument,
            let layout = GridLayout(rowStrings: rowsArgument.split(separator: ",").map(String.init)) {
