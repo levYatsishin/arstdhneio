@@ -1,11 +1,12 @@
 # arstdhneio
 
-> This fork was created with LLM assistance because I wanted these input and layout features for real use, fast. It is maintained in a practical, functionality-first way. If it is useful to you, feel free to use it, open issues, or send pull requests.
-
 > **A practical fork of _Asdfghjkl_.**
+
+> This fork was created with LLM assistance because I wanted these input and layout features for real use, fast. It is maintained in a practical, functionality-first way. If it is useful to you, feel free to use it, open issues, or send pull requests.
 
 Named after the [Deadmau5 song Asdfghjkl](https://www.youtube.com/watch?v=1aP910O2774), then adapted for Colemak-oriented use.
 
+![banner](banner.png)
 ## Fork Notes
 
 This repository is a personal fork of [dave1010/Asdfghjkl](https://github.com/dave1010/Asdfghjkl/).
@@ -26,7 +27,6 @@ Since upstream commit [`1daed86`](https://github.com/dave1010/Asdfghjkl/commit/1
 - Release and maintenance:
   A local release-packaging flow that matches CI, bundled `.app` release artifacts, and additional test coverage for layout translation, partitioning, and overlay behavior.
 
-![banner](banner.jpg)
 
 ## What does it do?
 
