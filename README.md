@@ -4,7 +4,7 @@
 
 > **A practical fork of _Asdfghjkl_.**
 
-Named after the [Deadmau5 song Asdfghjkl](https://www.youtube.com/watch?v=1aP910O2774). And then adapted for Colemak layout
+Named after the [Deadmau5 song Asdfghjkl](https://www.youtube.com/watch?v=1aP910O2774), then adapted for Colemak-oriented use.
 
 ## Fork Notes
 
@@ -15,22 +15,16 @@ All core credit for the original project, design, and implementation goes to
 
 ## Changes In This Fork
 
-Since upstream commit [`1daed86`](https://github.com/dave1010/Asdfghjkl/commit/1daed86b932b82c210e53ba8893de6a8618d366b), this fork adds:
+Since upstream commit [`1daed86`](https://github.com/dave1010/Asdfghjkl/commit/1daed86b932b82c210e53ba8893de6a8618d366b), this fork changes four main areas:
 
-- Command-layer key translation, so printable bindings follow the current macOS layout's Command-equivalent mapping instead of the plain typed layer.
-- `Cmd+;` activation as the default path, using the active layout's command-layer mapping for `;`, with optional Double-Command activation retained as a configurable alternative.
-- A configurable `Cmd+<key>` activation shortcut in the menu bar settings, persisted in `UserDefaults` and resolved through the active layout's Command layer.
-- Configurable activation modifiers, so the shortcut can use arbitrary combinations like `Control+Option+Y` instead of being limited to Command-based bindings.
-- Configurable grid layouts via launch arguments or environment variables.
-- Built-in `colemak` and `colemak5` presets.
-- Custom grid-row definitions for both 4x10 and 4x5 layouts.
-- Multi-display handling that keeps 5-column layouts intact on the screen under the mouse cursor instead of splitting them across displays.
-- App-bundle packaging scripts and install targets for building `arstdhneio.app`.
-- Automatic `.icns` app icon generation from `icon/icon.png` during app-bundle and release builds.
-- A menu-bar Launch at Login toggle backed by macOS `SMAppService` when the bundled app is installed and launched as `arstdhneio.app`.
-- A menu-bar Configuration window backed by `UserDefaults`, so layout presets and custom rows can be managed in-app instead of only through launch flags.
-- A local release-packaging flow that matches CI and produces `arstdhneio-macos-app.zip`.
-- Additional tests covering command-layer translation, configurable layouts, partitioning rules, and overlay navigation behavior.
+- Input and activation:
+  Command-layer key translation for printable bindings, a configurable shortcut-based activation path, optional Double-Command activation, and configurable modifier combinations such as `Control+Option+Y`.
+- Layouts and navigation:
+  Built-in `colemak` and `colemak5` presets, custom 4x10 and 4x5 row definitions, and multi-display handling that keeps narrow 5-column layouts on the screen under the cursor instead of splitting them across displays.
+- App experience:
+  A menu-bar Configuration window backed by `UserDefaults`, Launch at Login support through `SMAppService`, app-bundle packaging scripts, and automatic `.icns` generation from `icon/icon.png`.
+- Release and maintenance:
+  A local release-packaging flow that matches CI, bundled `.app` release artifacts, and additional test coverage for layout translation, partitioning, and overlay behavior.
 
 ![banner](banner.jpg)
 
@@ -45,8 +39,8 @@ The overlay resolves printable bindings through the current macOS layout's Comma
 mapping, so layouts that expose stable shortcut characters under `Cmd` keep the same arstdhneio
 bindings even when their normal typing layer changes.
 
-If you prefer the original interaction, the menu bar `Configuration...` window lets you switch the
-activation mode back to Double-Command Tap or change the shortcut modifiers and key.
+If you prefer the original interaction, the menu bar `Configuration...` window lets you switch back
+to Double-Command activation or change the shortcut modifiers and key.
 
 You can also:
 
@@ -149,7 +143,7 @@ you to re-grant those permissions after reinstalling or rebuilding the app.
 
 For release prep and tagging, see [PUBLISHING.md](PUBLISHING.md).
 
-### Grid layout parameters
+### Layout and shortcut parameters
 
 You can choose a different overlay key layout either from the menu bar `Configuration...` window
 or at launch time:
@@ -203,7 +197,7 @@ You can also override the activation mode for a single launch:
 swift run arstdhneio --activation-mode doubleCommandTap
 ```
 
-You can also override the `Cmd+<key>` activation character for a single launch:
+You can also override the activation key for a single launch:
 
 ```sh
 swift run arstdhneio --activation-key y
