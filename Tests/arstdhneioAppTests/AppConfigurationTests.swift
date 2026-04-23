@@ -6,7 +6,16 @@ final class AppConfigurationTests: XCTestCase {
     func testLoadsPersistedColemakSettingsWhenNoOverridesExist() {
         let userDefaults = makeUserDefaults()
         StoredAppSettingsStore(userDefaults: userDefaults).save(
-            StoredAppSettings(activationMode: .commandSemicolon, layoutMode: .colemak5, customRowsText: "")
+            StoredAppSettings(
+                activationMode: .commandSemicolon,
+                activationKeyText: ";",
+                activationUsesCommand: true,
+                activationUsesOption: false,
+                activationUsesControl: false,
+                activationUsesShift: false,
+                layoutMode: .colemak5,
+                customRowsText: ""
+            )
         )
 
         let configuration = AppConfiguration.load(
@@ -18,13 +27,23 @@ final class AppConfigurationTests: XCTestCase {
         XCTAssertEqual(configuration.gridLayout.columns, 5)
         XCTAssertEqual(configuration.storedSettings.layoutMode, .colemak5)
         XCTAssertEqual(configuration.effectiveSettings.activationMode, .commandSemicolon)
+        XCTAssertEqual(configuration.effectiveSettings.activationHotKey.keyCharacter, ";")
         XCTAssertFalse(configuration.usesLaunchOverrides)
     }
 
     func testLaunchArgumentOverridesPersistedSettings() {
         let userDefaults = makeUserDefaults()
         StoredAppSettingsStore(userDefaults: userDefaults).save(
-            StoredAppSettings(activationMode: .commandSemicolon, layoutMode: .colemak5, customRowsText: "")
+            StoredAppSettings(
+                activationMode: .commandSemicolon,
+                activationKeyText: ";",
+                activationUsesCommand: true,
+                activationUsesOption: false,
+                activationUsesControl: false,
+                activationUsesShift: false,
+                layoutMode: .colemak5,
+                customRowsText: ""
+            )
         )
 
         let configuration = AppConfiguration.load(
@@ -36,6 +55,7 @@ final class AppConfigurationTests: XCTestCase {
         XCTAssertEqual(configuration.gridLayout.columns, 10)
         XCTAssertEqual(configuration.gridLayout.coordinate(for: "q"), GridCoordinate(row: 1, column: 0))
         XCTAssertEqual(configuration.effectiveSettings.layoutMode, .qwerty)
+        XCTAssertEqual(configuration.effectiveSettings.activationHotKey.keyCharacter, ";")
         XCTAssertTrue(configuration.usesLaunchOverrides)
     }
 
@@ -43,6 +63,11 @@ final class AppConfigurationTests: XCTestCase {
         let userDefaults = makeUserDefaults()
         let settings = StoredAppSettings(
             activationMode: .doubleCommandTap,
+            activationKeyText: "y",
+            activationUsesCommand: true,
+            activationUsesOption: false,
+            activationUsesControl: false,
+            activationUsesShift: false,
             layoutMode: .custom,
             customRowsText: "neiuy,qwfpg,arstd,zxcvb"
         )
@@ -58,6 +83,11 @@ final class AppConfigurationTests: XCTestCase {
     func testInvalidCustomRowsProduceValidationError() {
         let settings = StoredAppSettings(
             activationMode: .commandSemicolon,
+            activationKeyText: ";",
+            activationUsesCommand: true,
+            activationUsesOption: false,
+            activationUsesControl: false,
+            activationUsesShift: false,
             layoutMode: .custom,
             customRowsText: "abc,def"
         )
@@ -70,6 +100,11 @@ final class AppConfigurationTests: XCTestCase {
         let userDefaults = makeUserDefaults()
         let stored = StoredAppSettings(
             activationMode: .doubleCommandTap,
+            activationKeyText: "k",
+            activationUsesCommand: true,
+            activationUsesOption: false,
+            activationUsesControl: false,
+            activationUsesShift: false,
             layoutMode: .colemak5,
             customRowsText: ""
         )
@@ -83,6 +118,58 @@ final class AppConfigurationTests: XCTestCase {
 
         XCTAssertEqual(configuration.storedSettings.activationMode, .doubleCommandTap)
         XCTAssertEqual(configuration.effectiveSettings.activationMode, .commandSemicolon)
+        XCTAssertEqual(configuration.effectiveSettings.activationHotKey.keyCharacter, "k")
+        XCTAssertTrue(configuration.usesLaunchOverrides)
+    }
+
+    func testActivationKeyPersistsAndCanBeOverriddenForSingleLaunch() {
+        let userDefaults = makeUserDefaults()
+        let stored = StoredAppSettings(
+            activationMode: .commandSemicolon,
+            activationKeyText: "y",
+            activationUsesCommand: true,
+            activationUsesOption: false,
+            activationUsesControl: false,
+            activationUsesShift: false,
+            layoutMode: .qwerty,
+            customRowsText: ""
+        )
+        StoredAppSettingsStore(userDefaults: userDefaults).save(stored)
+
+        let configuration = AppConfiguration.load(
+            arguments: ["arstdhneio", "--activation-key", "o"],
+            environment: [:],
+            userDefaults: userDefaults
+        )
+
+        XCTAssertEqual(configuration.storedSettings.activationHotKey.keyCharacter, "y")
+        XCTAssertEqual(configuration.effectiveSettings.activationHotKey.keyCharacter, "o")
+        XCTAssertEqual(configuration.effectiveSettings.activationHotKey.modifierDisplayText, "Command")
+        XCTAssertTrue(configuration.usesLaunchOverrides)
+    }
+
+    func testActivationModifierOverrideUsesEffectiveShortcutWithoutChangingStoredShortcut() {
+        let userDefaults = makeUserDefaults()
+        let stored = StoredAppSettings(
+            activationMode: .commandSemicolon,
+            activationKeyText: "y",
+            activationUsesCommand: true,
+            activationUsesOption: false,
+            activationUsesControl: false,
+            activationUsesShift: false,
+            layoutMode: .qwerty,
+            customRowsText: ""
+        )
+        StoredAppSettingsStore(userDefaults: userDefaults).save(stored)
+
+        let configuration = AppConfiguration.load(
+            arguments: ["arstdhneio", "--activation-modifiers", "control,option"],
+            environment: [:],
+            userDefaults: userDefaults
+        )
+
+        XCTAssertEqual(configuration.storedSettings.activationHotKey.modifierDisplayText, "Command")
+        XCTAssertEqual(configuration.effectiveSettings.activationHotKey.modifierDisplayText, "Control+Option")
         XCTAssertTrue(configuration.usesLaunchOverrides)
     }
 

@@ -57,6 +57,46 @@ struct ConfigurationView: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
+
+                            if draftSettings.activationMode == .commandSemicolon {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Shortcut")
+                                        .font(.subheadline)
+                                        .bold()
+
+                                    HStack(spacing: 10) {
+                                        modifierToggle("Command", isOn: $draftSettings.activationUsesCommand)
+                                        modifierToggle("Option", isOn: $draftSettings.activationUsesOption)
+                                        modifierToggle("Control", isOn: $draftSettings.activationUsesControl)
+                                        modifierToggle("Shift", isOn: $draftSettings.activationUsesShift)
+                                    }
+
+                                    TextField(";", text: $draftSettings.activationKeyText)
+                                        .textFieldStyle(.roundedBorder)
+                                        .font(.system(.body, design: .monospaced))
+                                        .frame(maxWidth: 120)
+                                        .onChange(of: draftSettings.activationKeyText) { newValue in
+                                            let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                                            if trimmed.count <= 1 {
+                                                if newValue != trimmed {
+                                                    draftSettings.activationKeyText = trimmed
+                                                }
+                                                return
+                                            }
+
+                                            draftSettings.activationKeyText = String(trimmed.prefix(1))
+                                        }
+
+                                    Text("Current shortcut: \(draftSettings.activationHotKey.displayText)")
+                                        .font(.callout)
+                                        .bold()
+
+                                    Text("The key is resolved through the current layout using the selected modifiers, so the shortcut follows layout changes.")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
                         }
                     }
 
@@ -153,6 +193,12 @@ struct ConfigurationView: View {
         }
         .pickerStyle(.radioGroup)
         .labelsHidden()
+    }
+
+    private func modifierToggle(_ title: String, isOn: Binding<Bool>) -> some View {
+        Toggle(title, isOn: isOn)
+            .toggleStyle(.checkbox)
+            .fixedSize()
     }
 }
 #endif

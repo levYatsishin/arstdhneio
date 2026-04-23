@@ -19,6 +19,8 @@ Since upstream commit [`1daed86`](https://github.com/dave1010/Asdfghjkl/commit/1
 
 - Command-layer key translation, so printable bindings follow the current macOS layout's Command-equivalent mapping instead of the plain typed layer.
 - `Cmd+;` activation as the default path, using the active layout's command-layer mapping for `;`, with optional Double-Command activation retained as a configurable alternative.
+- A configurable `Cmd+<key>` activation shortcut in the menu bar settings, persisted in `UserDefaults` and resolved through the active layout's Command layer.
+- Configurable activation modifiers, so the shortcut can use arbitrary combinations like `Control+Option+Y` instead of being limited to Command-based bindings.
 - Configurable grid layouts via launch arguments or environment variables.
 - Built-in `colemak` and `colemak5` presets.
 - Custom grid-row definitions for both 4x10 and 4x5 layouts.
@@ -34,7 +36,7 @@ Since upstream commit [`1daed86`](https://github.com/dave1010/Asdfghjkl/commit/1
 
 ## What does it do?
 
-1. Press `Cmd` plus the key that currently maps to `;` in your active layout's command layer to see the keyboard grid on your screen.
+1. Press your configured activation shortcut (`Command+;` by default) to see the keyboard grid on your screen.
 2. Tap a corresponding key to move the mouse to that area.
 3. Tap again (and again) to drill down.
 4. Tap `Space` at any point to click the mouse.
@@ -44,7 +46,7 @@ mapping, so layouts that expose stable shortcut characters under `Cmd` keep the 
 bindings even when their normal typing layer changes.
 
 If you prefer the original interaction, the menu bar `Configuration...` window lets you switch the
-activation mode back to Double-Command Tap.
+activation mode back to Double-Command Tap or change the shortcut modifiers and key.
 
 You can also:
 
@@ -113,23 +115,23 @@ testing aligned with the display that owns the tapped keys.
 
 ### Permissions
 
-By default, `arstdhneio` activates via a registered `Cmd+;` hotkey. After activation, overlay keys
-still flow through the global keyboard listener so click and refinement handling stay reliable.
-That means the current `Cmd+;` path still needs both Input Monitoring and Accessibility.
+By default, `arstdhneio` activates via a registered shortcut, with `Command+;` as the default saved
+binding. In the Configuration window you can choose any combination of Command, Option, Control,
+and Shift plus a single printable key. In this mode, the app only needs **Accessibility**. The
+key is resolved through the current layout using the selected modifier set, and the shortcut is
+re-registered when you switch keyboard layouts.
 
-The activation key follows the current layout's command-layer mapping for `;`, not just the US
-physical semicolon key position. If you switch keyboard layouts, the app re-registers that hotkey.
-
-If you switch the activation mode to Double-Command Tap, activation itself also comes from that same
-global event tap instead of the hotkey registration.
+If you switch the activation mode to Double-Command Tap, activation itself comes from a global event
+tap instead of the hotkey registration and the app will also need **Input Monitoring**.
 
 The Launch at Login toggle is only available from the bundled `arstdhneio.app`. If you run the
 raw executable with `swift run` or from `.build/debug`, the menu item stays disabled because
 `SMAppService.mainApp` only applies to the app bundle.
 
 The menu bar also exposes `Configuration...`, which lets you change the saved activation mode,
-layout preset, or custom rows. Those settings are persisted in `UserDefaults`. If you launch the
-app with `--grid-keymap`, `--grid-key-rows`, or `--activation-mode`, those launch-time overrides
+activation modifiers, activation key, layout preset, or custom rows. Those settings are persisted
+in `UserDefaults`. If you launch the app with `--grid-keymap`, `--grid-key-rows`,
+`--activation-mode`, `--activation-key`, or `--activation-modifiers`, those launch-time overrides
 still win for that session.
 
 Printable bindings are resolved from the current keyboard layout's Command-equivalent translation
@@ -191,12 +193,26 @@ The same options can also be provided via environment variables:
 ```sh
 ARSTDHNEIO_GRID_KEYMAP=colemak5
 ARSTDHNEIO_GRID_KEY_ROWS="1234567890,qwfpgjluy;,arstdhneio,zxcvbkm,./"
+ARSTDHNEIO_ACTIVATION_KEY="y"
+ARSTDHNEIO_ACTIVATION_MODIFIERS="control,option"
 ```
 
 You can also override the activation mode for a single launch:
 
 ```sh
 swift run arstdhneio --activation-mode doubleCommandTap
+```
+
+You can also override the `Cmd+<key>` activation character for a single launch:
+
+```sh
+swift run arstdhneio --activation-key y
+```
+
+You can also override the activation modifiers for a single launch:
+
+```sh
+swift run arstdhneio --activation-modifiers control,option
 ```
 
 Custom rows must contain four comma-separated rows with the same width and no duplicate

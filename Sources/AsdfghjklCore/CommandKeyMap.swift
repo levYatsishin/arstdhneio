@@ -51,8 +51,26 @@ public struct CommandKeyMap: CommandKeyResolving {
     }
 
     static func modifierState(includeShift: Bool) -> UInt32 {
-        let carbonModifiers = cmdKey | (includeShift ? shiftKey : 0)
-        return UInt32(carbonModifiers >> 8)
+        modifierState(
+            carbonModifiers: UInt32(cmdKey | (includeShift ? shiftKey : 0))
+        )
+    }
+
+    public func keyCode(for printableCharacter: Character, carbonModifiers: UInt32) -> UInt32? {
+        let target = Character(printableCharacter.lowercased())
+        let modifierState = Self.modifierState(carbonModifiers: carbonModifiers)
+
+        for keyCode in UInt16(0)...UInt16(127) {
+            if translator(keyCode, modifierState)?.first == target {
+                return UInt32(keyCode)
+            }
+        }
+
+        return nil
+    }
+
+    static func modifierState(carbonModifiers: UInt32) -> UInt32 {
+        carbonModifiers >> 8
     }
 }
 

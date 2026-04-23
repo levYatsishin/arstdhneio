@@ -7,6 +7,10 @@ final class CommandKeyMapTests: XCTestCase {
     func testModifierStateAlwaysIncludesCommand() {
         XCTAssertEqual(CommandKeyMap.modifierState(includeShift: false), UInt32(cmdKey >> 8))
         XCTAssertEqual(CommandKeyMap.modifierState(includeShift: true), UInt32((cmdKey | shiftKey) >> 8))
+        XCTAssertEqual(
+            CommandKeyMap.modifierState(carbonModifiers: UInt32(controlKey | optionKey)),
+            UInt32((controlKey | optionKey) >> 8)
+        )
     }
 
     func testPrintableCharacterUsesCommandEquivalentTranslator() {
@@ -61,6 +65,21 @@ final class CommandKeyMapTests: XCTestCase {
         }
 
         XCTAssertEqual(map.keyBinding(for: ";"), CommandKeyBinding(keyCode: 18, requiresShift: true))
+    }
+
+    func testKeyCodeResolvesUsingExactCarbonModifiers() {
+        let targetModifiers = UInt32(controlKey | optionKey)
+        let map = CommandKeyMap { keyCode, modifierState in
+            switch (keyCode, modifierState) {
+            case (44, CommandKeyMap.modifierState(carbonModifiers: targetModifiers)):
+                return "y"
+            default:
+                return nil
+            }
+        }
+
+        XCTAssertEqual(map.keyCode(for: "y", carbonModifiers: targetModifiers), 44)
+        XCTAssertNil(map.keyCode(for: "y", carbonModifiers: UInt32(cmdKey)))
     }
 }
 #endif

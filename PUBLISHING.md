@@ -49,17 +49,18 @@ That produces:
    ```sh
    SWIFT="$HOME/.swiftly/bin/swift" make release-archive
    ```
+8. Update `CHANGELOG.md` with the release notes you want reflected on GitHub.
 
 ## GitHub release flow
 
-The repo is configured so that pushing a tag like `v0.1.0` triggers the release workflow and
+The repo is configured so that pushing a tag like `v0.3.0` triggers the release workflow and
 uploads `arstdhneio-macos-app.zip`.
 
 Example:
 
 ```sh
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.3.0
+git push origin v0.3.0
 ```
 
 ## Known limitation

@@ -9,14 +9,14 @@ final class GlobalHotKeyManager {
     private let onHotKey: () -> Void
     private let hotKeyID = EventHotKeyID(signature: OSType(0x41525354), id: 1) // "ARST"
     private let commandKeyMap: CommandKeyMap
-    private let activationCharacter: Character
+    private let activationHotKey: ActivationHotKey
 
     init(
-        activationCharacter: Character = ";",
+        activationHotKey: ActivationHotKey = .default,
         commandKeyMap: CommandKeyMap = CommandKeyMap(),
         onHotKey: @escaping () -> Void
     ) {
-        self.activationCharacter = activationCharacter
+        self.activationHotKey = activationHotKey
         self.commandKeyMap = commandKeyMap
         self.onHotKey = onHotKey
     }
@@ -38,14 +38,14 @@ final class GlobalHotKeyManager {
             &eventHandlerRef
         )
 
-        let binding = commandKeyMap.keyBinding(for: activationCharacter) ?? CommandKeyBinding(
-            keyCode: UInt32(kVK_ANSI_Semicolon),
-            requiresShift: false
-        )
-        let modifiers = UInt32(cmdKey | (binding.requiresShift ? shiftKey : 0))
+        let modifiers = activationHotKey.carbonModifiers
+        let keyCode = commandKeyMap.keyCode(
+            for: activationHotKey.keyCharacter,
+            carbonModifiers: modifiers
+        ) ?? UInt32(kVK_ANSI_Semicolon)
 
         RegisterEventHotKey(
-            binding.keyCode,
+            keyCode,
             modifiers,
             hotKeyID,
             GetApplicationEventTarget(),

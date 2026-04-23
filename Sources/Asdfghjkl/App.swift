@@ -30,7 +30,7 @@ struct AboutView: View {
                     Text("Usage:")
                         .font(.headline)
                     
-                    Text("1. Press Cmd+; to show the keyboard grid")
+                    Text("1. Press your configured shortcut (Command+; by default) to show the keyboard grid")
                     Text("2. Tap a corresponding key to move the mouse to that area")
                     Text("3. Tap again (and again) to drill down")
                     Text("4. Tap Space at any point to click the mouse")
@@ -41,7 +41,7 @@ struct AboutView: View {
                     Text("You can also:")
                         .font(.headline)
                     
-                    Text("• Use Configuration to switch to Double-Command activation")
+                    Text("• Use Configuration to change the activation shortcut or switch to Double-Command activation")
                     Text("• Tap Backspace to zoom back out to the previous level")
                     Text("• Tap Arrow Keys to move the selected tile")
                     Text("• Tap ' (apostrophe) to middle-click")
@@ -88,6 +88,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var currentSettings = StoredAppSettings.default
     private var currentGridLayout = arstdhneioCore.GridLayout()
     private var currentActivationMode = ActivationMode.commandSemicolon
+    private var currentActivationHotKey = ActivationHotKey.default
     private var overlayController: OverlayController!
     private var inputManager: InputManager!
     private var hotKeyManager: GlobalHotKeyManager?
@@ -104,7 +105,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         currentSettings = appConfiguration.effectiveSettings
         currentGridLayout = appConfiguration.gridLayout
         currentActivationMode = appConfiguration.effectiveSettings.activationMode
-        appDebugLog("launch activationMode=\(currentActivationMode.rawValue) layoutColumns=\(currentGridLayout.columns)")
+        currentActivationHotKey = appConfiguration.effectiveSettings.activationHotKey
+        appDebugLog(
+            "launch activationMode=\(currentActivationMode.rawValue) " +
+            "activationShortcut=\(currentActivationHotKey.displayText) layoutColumns=\(currentGridLayout.columns)"
+        )
         setupMenuBar()
 
         screenObserver = NotificationCenter.default.addObserver(
@@ -127,7 +132,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
 
-        configureRuntime(layout: appConfiguration.gridLayout, activationMode: appConfiguration.effectiveSettings.activationMode)
+        configureRuntime(
+            layout: appConfiguration.gridLayout,
+            activationMode: appConfiguration.effectiveSettings.activationMode,
+            activationHotKey: appConfiguration.effectiveSettings.activationHotKey
+        )
     }
     
     private func setupMenuBar() {
@@ -347,10 +356,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         alert.runModal()
     }
 
-    private func configureRuntime(layout gridLayout: arstdhneioCore.GridLayout, activationMode: ActivationMode) {
+    private func configureRuntime(
+        layout gridLayout: arstdhneioCore.GridLayout,
+        activationMode: ActivationMode,
+        activationHotKey: ActivationHotKey
+    ) {
         currentGridLayout = gridLayout
         currentActivationMode = activationMode
-        appDebugLog("configureRuntime activationMode=\(activationMode.rawValue)")
+        currentActivationHotKey = activationHotKey
+        appDebugLog(
+            "configureRuntime activationMode=\(activationMode.rawValue) activationShortcut=\(activationHotKey.displayText)"
+        )
         hotKeyManager?.stop()
         inputManager?.stop()
         overlayWindows.forEach { $0.hide() }
@@ -384,10 +400,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             inputManager.setDoubleCommandActivationEnabled(true)
             inputManager.start()
         } else {
-            appDebugLog("starting cmd+; hotkey mode")
+            appDebugLog("starting configurable hotkey mode")
             inputManager.onToggle = nil
             inputManager.setDoubleCommandActivationEnabled(false)
-            let hotKeyManager = GlobalHotKeyManager { [weak self] in
+            let hotKeyManager = GlobalHotKeyManager(activationHotKey: activationHotKey) { [weak self] in
                 Task { @MainActor in
                     self?.handleCommandSemicolonActivation()
                 }
@@ -410,7 +426,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 effectiveSettings: settings,
                 usesLaunchOverrides: false
             )
-            configureRuntime(layout: layout, activationMode: settings.activationMode)
+            configureRuntime(
+                layout: layout,
+                activationMode: settings.activationMode,
+                activationHotKey: settings.activationHotKey
+            )
         }
     }
 
@@ -419,7 +439,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func handleCommandSemicolonActivation() {
-        appDebugLog("cmd+; activation received overlayActive=\(overlayController.isActive)")
+        appDebugLog("shortcut activation received overlayActive=\(overlayController.isActive)")
         rebuildOverlayWindows()
         overlayController.toggle()
     }
